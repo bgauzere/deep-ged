@@ -1,0 +1,14 @@
+DeepGraphRegression.ipynb
+DeepGraphWithNNTorch.ipynb
+DeepGraphWithTorch.ipynb
+gcn.ipynb
+gcn.py
+gcnRegression.ipynb
+layers.py
+models.py
+__pycache__/
+README
+regression.py
+svd.py
+triangular_losses.py
+utils.py
