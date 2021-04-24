@@ -234,17 +234,17 @@ def eps_assigment_from_mapping(S,nb_iter):
     S : matrice de similarité
     returns: Matrice de permutation 
     '''
-        ones_n = torch.ones(S.shape[0],device=S.device)
-        ones_m = torch.ones(S.shape[1],device=S.device)
-    
-        Sk = S
-        for i in range(nb_iter):
-            D=torch.diag(1.0/(Sk@ones_m)) #1/somme des lignes
-            D[D.shape[0]-1,D.shape[1]-1]=1.0 # Traitement derniere ligne (epsilon nodes)
-            Sk1 = D@Sk
-            D=torch.diag(1.0/(ones_n@Sk1)) #1/somme des colonnes
-            D[D.shape[0]-1,D.shape[1]-1]=1.0 #Traitement derniere colonne (epsilon nodes)
-            Sk = Sk1@D 
+    ones_n = torch.ones(S.shape[0],device=S.device)
+    ones_m = torch.ones(S.shape[1],device=S.device)
+
+    Sk = S
+    for i in range(nb_iter):
+        D=torch.diag(1.0/(Sk@ones_m)) #1/somme des lignes
+        D[D.shape[0]-1,D.shape[1]-1]=1.0 # Traitement derniere ligne (epsilon nodes)
+        Sk1 = D@Sk
+        D=torch.diag(1.0/(ones_n@Sk1)) #1/somme des colonnes
+        D[D.shape[0]-1,D.shape[1]-1]=1.0 #Traitement derniere colonne (epsilon nodes)
+        Sk = Sk1@D 
         
         return Sk
 
