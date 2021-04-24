@@ -195,22 +195,3 @@ def compute_ring_distance(g,h,ring_g,ring_h,g_node_index,h_node_index,alpha,lbda
 
     return red
 
-'''
-def lsape_populate_instance(first_graph,second_graph,average_node_cost, average_edge_cost,alpha,lbda):       #ring_g, ring_h come from global ring with all graphs in so ring_g = rings['g'] and ring_h = rings['h']
-    g,h = Gs[first_graph], Gs[second_graph]
-    average_cost =[average_node_cost, average_edge_cost]
-    #first_graph, second_graph = first_graph,second_graph
-    #ring_g,ring_h = self.build_rings(first_graph,len(lbda)), self.build_rings(second_graph,len(lbda))
-    #ring_g,ring_h = self.build_rings(first_graph,lbda.size()), self.build_rings(second_graph,lbda.size())
-    lsape_instance = [[0 for _ in range(len(g) + 1)] for __ in range(len(h) + 1)]
-    for g_node_index in range(len(g) + 1):
-        for h_node_index in range(len(h) + 1):
-            lsape_instance[h_node_index][g_node_index] = compute_ring_distance(g,h,self.ring_g,self.ring_h,g_node_index,h_node_index,alpha,lbda)
-    for i in lsape_instance :
-        i = torch.as_tensor(i)
-        #print(i.type())
-    lsape_instance = torch.as_tensor(lsape_instance)
-    #print(type(lsape_instance))
-    return lsape_instance
-
-'''
