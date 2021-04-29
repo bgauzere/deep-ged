@@ -95,5 +95,8 @@ class KnnRegressFromGED(nn.Module):
         val,ind=torch.topk(x,self.k,dim=1,largest=False)
         if self.weights=='uniform':
             return torch.sum(self.y[ind],1)/self.k
-        sim=torch.exp(-alpha*val)
+#        sim=torch.exp(-alpha*val)
+        sim=alpha/(val+1.0)
+        #m=torch.nn.Softmax(dim=1)
+#        sim=m(-val)
         return torch.sum(sim*self.y[ind],1)/torch.sum(sim,1)
