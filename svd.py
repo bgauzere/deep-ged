@@ -290,7 +290,7 @@ def franck_wolfe(x0,D,c,offset,kmax,n,m):
         k=k+1
         converged= (-alpha < 10**(-3))
 #        x=xp
-        T=T+dT
+        #T=T+dT
 #        print('cost(',k,')=',.5*x.T@D@x+c.T@x) # valeur de la ged pour x
 
     return x
