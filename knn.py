@@ -340,7 +340,7 @@ def knn(train_graphs, train_size, ged_pkl):
     print('y_pred : ', y_pred)
     #print(confusion_matrix(y_test, y_pred))
     print('acc : ', np.mean(y_pred == y)*100)
-    print(classification_report(ytrain, y_pred))
+    print(classification_report(y, y_pred))
     #print(classification_report(data_test, y_pred)) #add data_test in parameters
 
     plt.plot(D[12, :], label='D[12, :]')
@@ -474,6 +474,7 @@ if __name__ == "__main__":
     new_nodeInsDel = torch.load('nodeInsDel_min',pickle_module=pkl)
     new_edgeInsDel = torch.load('edgeInsDel_min',pickle_module=pkl)
     new_edge_costs = torch.load('edgeSub_min',pickle_module=pkl)
+    print(len(new_node_costs))
     new_node_costs.requires_grad=False
     new_nodeInsDel.requires_grad=False
     new_edgeInsDel.requires_grad=False
@@ -493,7 +494,7 @@ if __name__ == "__main__":
     edgeInsDel_2 = torch.tensor(3.0)
     '''
 
-    rings_andor_fw = 'rings_avec_fw'  #'sans_rings_sans_fw' #sans_rings_avec_fw
+    rings_andor_fw = 'rings_sans_fw'  #'sans_rings_sans_fw' #sans_rings_avec_fw
     train_size = 68
     #main_testing_function(train_size, rings_andor_fw, node_costs, edge_costs, nodeInsDel, edgeInsDel, class1, class2)
     main_testing_function(train_size, rings_andor_fw, new_node_costs, new_edge_costs, new_nodeInsDel, new_edgeInsDel, class1, class2)
