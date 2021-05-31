@@ -13,6 +13,9 @@ from svd import iterated_power as compute_major_axis
 from gklearn.utils.graphfiles import loadDataset
 import networkx as nx
 import matplotlib
+from sklearn.model_selection import train_test_split
+from sklearn import datasets
+from torch.utils.data import DataLoader, random_split, TensorDataset
 matplotlib.use('TkAgg')
 
 
@@ -261,6 +264,36 @@ def new_class(class1,random_class1):
     class1=torch.tensor(tmp)
     return class1
 
+def tr_test_data(train_size, class1, class2):
+    nb_class1=12
+    nb_class2=int((nb_class1-1)/2)
+    nb_elt=int(nb_class1*(nb_class1+2*nb_class2-1)/2)
+    #nb_elt = int(train_size*(train_size-1)/2)
+    data = torch.empty((nb_elt, 2), dtype=torch.int)
+    yt=torch.ones(nb_elt)
+    random_class1=class1[(torch.abs(10000*torch.randn(nb_class1)).int()%class1.size()[0]).long()]
+    random_class2=class2[(torch.abs(10000*torch.randn(nb_class2)).int()%class2.size()[0]).long()]
+    train_graphs=torch.cat((random_class1,random_class2),0)
+
+    couples=torch.triu_indices(train_size,train_size,offset=1)
+    data[0:nb_elt,0]=train_graphs[couples[0,0:nb_elt]]
+    data[0:nb_elt,1]=train_graphs[couples[1,0:nb_elt]]
+    for k in range(nb_elt):
+        if (y[data[k][0]]!=y[data[k][1]]):
+            yt[k]=-1.0      
+    [train_D, valid_D,train_L,valid_L]= train_test_split(data,yt, test_size=0.25,train_size=0.75, shuffle=True) #, stratify=yt)
+        
+    #DatasetTrain = TensorDataset(train_D, train_L)
+    #DatasetValid=TensorDataset(valid_D, valid_L)
+
+    #trainloader=torch.utils.data.DataLoader(DatasetTrain,batch_size=len(train_D),shuffle=True,drop_last=True, num_workers=0)
+    #validationloader=torch.utils.data.DataLoader(DatasetValid, batch_size=8, drop_last=True,num_workers=0)
+
+    print(len(train_D), len(valid_D))
+    print("len data = ",len(data),data,'\n')
+    return data,train_graphs,train_D,valid_D,train_L,valid_L
+
+
 def train_test_data(train_size, test_size, class1, class2):
     nb_elt = int(train_size*(train_size-1)/2)
     data = torch.empty((nb_elt, 2), dtype=torch.int)
@@ -311,17 +344,18 @@ def train_test_data(train_size, test_size, class1, class2):
     return data, train_graphs, data_test, test_graphs
 
 
-def knn(train_graphs, train_size, ged_pkl):
+def knn(train_graphs, train_size, ged_pkl,train_D,valid_D,train_L,valid_L):
+    
     triu_indices = torch.triu_indices(row=train_size, col=train_size, offset=1)
     D = torch.zeros((train_size, train_size))
-    D[triu_indices[0, :], triu_indices[1, :]] = ged_pkl
+    D[triu_indices[0, :], triu_indices[1, :]][:126] = ged_pkl
     D = D+D.t()
-
+    '''
     plt.matshow(D)
     plt.colorbar()
     plt.title('D ')
     plt.show()
-
+    '''
     classifier = KNeighborsClassifier(n_neighbors=3, metric='precomputed')
     print('D.shape : ',D.shape)
 
@@ -335,12 +369,15 @@ def knn(train_graphs, train_size, ged_pkl):
     # plt.show()
     #print('ged size : ', ged_pkl.size())
 
+    print("train_L = ",len(train_L))
     classifier.fit(D, ytrain)  # train_size*train_size
-    y_pred = classifier.predict(D)  # test_size*train_size
+    #y_pred = classifier.predict(D)  # test_size*train_size
+    y_pred = classifier.predict(D) #valid_D
     print('y_pred : ', y_pred)
     #print(confusion_matrix(y_test, y_pred))
     print('acc : ', np.mean(y_pred == y)*100)
-    print(classification_report(y, y_pred))
+    print("valid_L = ",valid_L, len(valid_L))
+    print(classification_report(valid_L[:17], y_pred)) #valid_L,y_pred
     #print(classification_report(data_test, y_pred)) #add data_test in parameters
 
     plt.plot(D[12, :], label='D[12, :]')
@@ -350,22 +387,22 @@ def knn(train_graphs, train_size, ged_pkl):
     plt.show()
 
 def main_testing_function(train_size, rings_andor_fw, node_costs, edge_costs, nodeInsDel, edgeInsDel, class1, class2):
-    data,train_graphs = train_data(train_size, class1, class2)
+    #data,train_graphs = train_data(train_size, class1, class2)
+    data,train_graphs,train_D,valid_D,train_L,valid_L = tr_test_data(train_size, class1, class2)
     ged_pkl=ged_to_pkl(data, node_costs, edge_costs, nodeInsDel, edgeInsDel, rings_andor_fw)
 
-    '''
+    
     g1=0
     g2=1
     C=construct_cost_matrix(g1,g2, node_costs, edge_costs, nodeInsDel, edgeInsDel)
-    print('C :',C)
+    print('Cost matrix :',len(C),C)
     plt.matshow(C)
     plt.title('Cost matrix for g1=0 and g2=1')
     plt.show()
-    '''
-
+    
     new_ged_pkl = ged_from_pkl(rings_andor_fw)
 
-    knn(train_graphs, train_size, new_ged_pkl)
+    knn(train_graphs, train_size, new_ged_pkl, train_D,valid_D,train_L,valid_L)
 
 
 
@@ -384,97 +421,10 @@ if __name__ == "__main__":
     class1 = torch.tensor([k for k in range(len(y)) if y[k] == 1])
     class2 = torch.tensor([k for k in range(len(y)) if y[k] == 0])
 
-    node_costs = torch.tensor([[0.0000e+00, 2.1417e-04, 1.4265e-04, 1.4876e-04, 4.2080e-05, 6.0872e-04,
-                            2.0225e-04, 1.5615e-04, 8.1159e-04, 5.7478e-04, 7.1602e-05, 8.1477e-05,
-                            3.7777e-04, 3.7794e-04, 6.6344e-04, 1.2428e-04, 7.8725e-04, 1.8384e-04,
-                            4.7986e-05],
-                           [2.1417e-04, 0.0000e+00, 7.1073e-04, 6.5603e-04, 9.5320e-04, 5.8584e-05,
-                            2.6930e-04, 6.3340e-05, 1.7450e-04, 2.6896e-04, 8.0216e-04, 2.3394e-05,
-                            6.5480e-04, 1.4686e-04, 9.4018e-04, 2.1455e-04, 1.2443e-04, 2.6400e-04,
-                            3.5339e-04],
-                           [1.4265e-04, 7.1073e-04, 0.0000e+00, 1.9181e-04, 8.8574e-04, 9.4753e-04,
-                            3.5654e-04, 3.9683e-05, 4.3312e-05, 2.8949e-05, 8.1884e-05, 2.5145e-04,
-                            4.8013e-05, 1.3623e-04, 7.5691e-05, 5.8886e-04, 3.0807e-05, 1.0630e-05,
-                            3.8683e-04],
-                           [1.4876e-04, 6.5603e-04, 1.9181e-04, 0.0000e+00, 9.7899e-04, 1.2052e-04,
-                            2.3864e-04, 9.4093e-05, 6.6583e-05, 4.3135e-04, 4.2605e-05, 4.9183e-04,
-                            5.5029e-04, 6.1907e-04, 7.8500e-04, 4.4327e-04, 8.1684e-05, 6.2143e-04,
-                            6.8563e-05],
-                           [4.2080e-05, 9.5320e-04, 8.8574e-04, 9.7899e-04, 0.0000e+00, 1.5868e-04,
-                            3.2499e-04, 8.7428e-04, 1.6966e-04, 6.6663e-04, 6.7565e-05, 1.0199e-03,
-                            5.3650e-05, 3.9485e-04, 1.3087e-04, 9.1877e-04, 2.3080e-04, 8.0990e-04,
-                            1.3594e-04],
-                           [6.0872e-04, 5.8584e-05, 9.4753e-04, 1.2052e-04, 1.5868e-04, 0.0000e+00,
-                            4.1385e-04, 1.2610e-04, 4.3998e-05, 9.6344e-04, 1.0217e-03, 2.6727e-05,
-                            9.7008e-05, 8.4777e-04, 4.2021e-05, 2.6550e-05, 1.6204e-04, 6.8144e-04,
-                            4.2484e-05],
-                           [2.0225e-04, 2.6930e-04, 3.5654e-04, 2.3864e-04, 3.2499e-04, 4.1385e-04,
-                            0.0000e+00, 3.9279e-04, 6.7772e-04, 2.6301e-04, 3.7975e-04, 1.4898e-04,
-                            3.3335e-04, 3.9055e-04, 5.3765e-05, 1.0666e-04, 8.4510e-04, 4.5808e-05,
-                            1.7649e-04],
-                           [1.5615e-04, 6.3340e-05, 3.9683e-05, 9.4093e-05, 8.7428e-04, 1.2610e-04,
-                            3.9279e-04, 0.0000e+00, 6.7877e-04, 7.7846e-04, 6.6429e-05, 6.9824e-05,
-                            2.2679e-04, 4.5791e-04, 2.0854e-04, 5.6237e-04, 6.1879e-05, 1.2327e-04,
-                            5.5628e-05],
-                           [8.1159e-04, 1.7450e-04, 4.3312e-05, 6.6583e-05, 1.6966e-04, 4.3998e-05,
-                            6.7772e-04, 6.7877e-04, 0.0000e+00, 8.4517e-05, 4.0259e-05, 5.7845e-04,
-                            1.4896e-04, 5.0939e-05, 1.9496e-04, 9.9730e-04, 4.2647e-05, 1.4748e-04,
-                            8.9371e-05],
-                           [5.7478e-04, 2.6896e-04, 2.8949e-05, 4.3135e-04, 6.6663e-04, 9.6344e-04,
-                            2.6301e-04, 7.7846e-04, 8.4517e-05, 0.0000e+00, 1.7674e-04, 1.6068e-04,
-                            2.2346e-05, 8.3865e-05, 5.9050e-04, 2.5126e-04, 7.1116e-05, 2.1961e-04,
-                            3.7895e-04],
-                           [7.1602e-05, 8.0216e-04, 8.1884e-05, 4.2605e-05, 6.7565e-05, 1.0217e-03,
-                            3.7975e-04, 6.6429e-05, 4.0259e-05, 1.7674e-04, 0.0000e+00, 2.8413e-04,
-                            6.3511e-04, 8.8566e-04, 2.1421e-04, 6.1044e-04, 1.8297e-05, 3.7086e-04,
-                            7.5775e-04],
-                           [8.1477e-05, 2.3394e-05, 2.5145e-04, 4.9183e-04, 1.0199e-03, 2.6727e-05,
-                            1.4898e-04, 6.9824e-05, 5.7845e-04, 1.6068e-04, 2.8413e-04, 0.0000e+00,
-                            3.2569e-04, 1.1300e-04, 2.2427e-04, 2.0428e-04, 8.5494e-04, 4.8170e-04,
-                            1.2983e-05],
-                           [3.7777e-04, 6.5480e-04, 4.8013e-05, 5.5029e-04, 5.3650e-05, 9.7008e-05,
-                            3.3335e-04, 2.2679e-04, 1.4896e-04, 2.2346e-05, 6.3511e-04, 3.2569e-04,
-                            0.0000e+00, 7.2481e-04, 2.5192e-04, 9.8129e-04, 2.5114e-04, 7.5161e-04,
-                            7.1826e-04],
-                           [3.7794e-04, 1.4686e-04, 1.3623e-04, 6.1907e-04, 3.9485e-04, 8.4777e-04,
-                            3.9055e-04, 4.5791e-04, 5.0939e-05, 8.3865e-05, 8.8566e-04, 1.1300e-04,
-                            7.2481e-04, 0.0000e+00, 7.2420e-04, 3.2423e-04, 8.2467e-04, 4.1701e-05,
-                            1.5990e-04],
-                           [6.6344e-04, 9.4018e-04, 7.5691e-05, 7.8500e-04, 1.3087e-04, 4.2021e-05,
-                            5.3765e-05, 2.0854e-04, 1.9496e-04, 5.9050e-04, 2.1421e-04, 2.2427e-04,
-                            2.5192e-04, 7.2420e-04, 0.0000e+00, 5.9012e-05, 1.3361e-04, 1.4604e-04,
-                            4.0830e-05],
-                           [1.2428e-04, 2.1455e-04, 5.8886e-04, 4.4327e-04, 9.1877e-04, 2.6550e-05,
-                            1.0666e-04, 5.6237e-04, 9.9730e-04, 2.5126e-04, 6.1044e-04, 2.0428e-04,
-                            9.8129e-04, 3.2423e-04, 5.9012e-05, 0.0000e+00, 1.3253e-04, 7.0482e-04,
-                            3.0487e-04],
-                           [7.8725e-04, 1.2443e-04, 3.0807e-05, 8.1684e-05, 2.3080e-04, 1.6204e-04,
-                            8.4510e-04, 6.1879e-05, 4.2647e-05, 7.1116e-05, 1.8297e-05, 8.5494e-04,
-                            2.5114e-04, 8.2467e-04, 1.3361e-04, 1.3253e-04, 0.0000e+00, 9.0885e-04,
-                            8.9417e-04],
-                           [1.8384e-04, 2.6400e-04, 1.0630e-05, 6.2143e-04, 8.0990e-04, 6.8144e-04,
-                            4.5808e-05, 1.2327e-04, 1.4748e-04, 2.1961e-04, 3.7086e-04, 4.8170e-04,
-                            7.5161e-04, 4.1701e-05, 1.4604e-04, 7.0482e-04, 9.0885e-04, 0.0000e+00,
-                            1.4390e-04],
-                           [4.7986e-05, 3.5339e-04, 3.8683e-04, 6.8563e-05, 1.3594e-04, 4.2484e-05,
-                            1.7649e-04, 5.5628e-05, 8.9371e-05, 3.7895e-04, 7.5775e-04, 1.2983e-05,
-                            7.1826e-04, 1.5990e-04, 4.0830e-05, 3.0487e-04, 8.9417e-04, 1.4390e-04,
-                            0.0000e+00]])
-
-
-    nodeInsDel = torch.tensor(0.006543666590005159)
-    edgeInsDel = torch.tensor(0.19699111580848694)
-    edge_costs = torch.tensor([[0.0000e+00, 0.15198137, 0.16227092],
-                            [0.15198137, 0.0000e+00, 0.15802163],
-                            [0.16227092, 0.15802163, 0.0000e+00]])
-    
-    
-   
     new_node_costs = torch.load('nodeSub_min',pickle_module=pkl)
     new_nodeInsDel = torch.load('nodeInsDel_min',pickle_module=pkl)
     new_edgeInsDel = torch.load('edgeInsDel_min',pickle_module=pkl)
     new_edge_costs = torch.load('edgeSub_min',pickle_module=pkl)
-    print(len(new_node_costs))
     new_node_costs.requires_grad=False
     new_nodeInsDel.requires_grad=False
     new_edgeInsDel.requires_grad=False
@@ -495,8 +445,10 @@ if __name__ == "__main__":
     '''
 
     rings_andor_fw = 'rings_sans_fw'  #'sans_rings_sans_fw' #sans_rings_avec_fw
-    train_size = 68
-    #main_testing_function(train_size, rings_andor_fw, node_costs, edge_costs, nodeInsDel, edgeInsDel, class1, class2)
+    #train_size = 68
+    nb_class1=12
+    nb_class2=int((nb_class1-1)/2)
+    train_size=nb_class1+nb_class2
     main_testing_function(train_size, rings_andor_fw, new_node_costs, new_edge_costs, new_nodeInsDel, new_edgeInsDel, class1, class2)
 
 
