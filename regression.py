@@ -84,10 +84,23 @@ class KnnRegressFromGED(nn.Module):
         self.nb_test=nb_test
         self.device=device
         self.weights=weights
-        self.coef_dist=nn.Parameter(torch.tensor(.1,requires_grad=True,device=self.device))
+        self.coef_dist=nn.Parameter(torch.tensor(0.85,requires_grad=True,device=self.device))
     
-    def forward(self, ged):
+    def normalize_val(self,val):  
+        n=val.shape[0]
+        m=val.shape[1]        
         alpha=self.coef_dist*self.coef_dist
+        ones_m=torch.ones((1,m),device=val.device)
+        
+        min=val[:,0].view(n,1)@ones_m
+        v2=val-min
+        normal=(1.0/(alpha*torch.std(v2,dim=1))).view(n,1)@ones_m
+        print('alpha=',alpha)
+        
+        return v2*normal
+        
+    def forward(self, ged):
+        
            
         #ged is supposed to be a 1D array of size (train_size-nb_test X nb_test)
         train_size=ged.shape[0]//self.nb_test+self.nb_test
@@ -95,5 +108,13 @@ class KnnRegressFromGED(nn.Module):
         val,ind=torch.topk(x,self.k,dim=1,largest=False)
         if self.weights=='uniform':
             return torch.sum(self.y[ind],1)/self.k
-        sim=torch.exp(-alpha*val)
+#        sim=torch.exp(-alpha*val)
+        val=self.normalize_val(val)
+        sim=1.0/(val+1.0)        
+#        m=torch.nn.Softmax(dim=1)
+#        sim=m(-val)
+#        print('y=',self.y[ind])
+#        print('val=',val)
+#        print('sim=',sim)
+#        print('res=',torch.sum(sim*self.y[ind],1)/torch.sum(sim,1))
         return torch.sum(sim*self.y[ind],1)/torch.sum(sim,1)

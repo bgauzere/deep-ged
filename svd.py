@@ -229,69 +229,65 @@ def iterated_power(M,inv=False):
 
 
 def eps_assigment_from_mapping(S,nb_iter):
-    '''
-    Approximation de l'hongrois dérivable
-    S : matrice de similarité
-    returns: Matrice de permutation 
-    '''
-    ones_n = torch.ones(S.shape[0],device=S.device)
-    ones_m = torch.ones(S.shape[1],device=S.device)
-
-    Sk = S
-    for i in range(nb_iter):
-        D=torch.diag(1.0/(Sk@ones_m)) #1/somme des lignes
-        D[D.shape[0]-1,D.shape[1]-1]=1.0 # Traitement derniere ligne (epsilon nodes)
-        Sk1 = D@Sk
-        D=torch.diag(1.0/(ones_n@Sk1)) #1/somme des colonnes
-        D[D.shape[0]-1,D.shape[1]-1]=1.0 #Traitement derniere colonne (epsilon nodes)
-        Sk = Sk1@D 
+        ones_n = torch.ones(S.shape[0],device=S.device)
+        ones_m = torch.ones(S.shape[1],device=S.device)
+    
+        Sk = S
+        for i in range(nb_iter):
+            D=torch.diag(1.0/(Sk@ones_m))
+            D[D.shape[0]-1,D.shape[1]-1]=1.0
+            Sk1 = D@Sk
+            D=torch.diag(1.0/(ones_n@Sk1))
+            D[D.shape[0]-1,D.shape[1]-1]=1.0
+            Sk = Sk1@D
         
         return Sk
 
 def franck_wolfe(x0,D,c,offset,kmax,n,m):
     k=0
-    L=c.T@x0
-    S=.5*x0.T@D@x0+L
     converged=False
-    x=x0 #initialisation du FW : à améliorer
-    T=5.0 # largeur de bande 0.2 
-    dT=1 # pas de modification de T
+    x=x0
+    T=3.0
+    dT=.5
     nb_iter=10
     ones_m=torch.ones((1,m+1),device=D.device)
     ones_n=torch.ones((n+1,1),device=D.device)
     while (not converged) and (k<=kmax):
-        Cp=(x.T@D+c).view(n+1,m+1) #matrice de cout
+        Cp=(x.T@D+c).view(n+1,m+1)
         minL,_=Cp.min(dim=1)
-        Cp=Cp-(minL.view(n+1,1)@ones_m) # matrice de cout min à 0
-#        Cp=Cp-ones_n@minC.view(1,m+1)
-        nb_iter=max(1,nb_iter-2*dT)
-        M = torch.exp(-T*Cp) # matrice de similarité
-        b=eps_assigment_from_mapping(M,nb_iter).view((n+1)*(m+1),1)  # approximation du hongrois car pb de gradient
-        alpha=x.T@D@(b-x)+c.T@(b-x) # pente
-        t=offset/(offset+k) # t : pas dans la direction (b-x) 
-        x=x+t*(b-x) # mise a jour de la position courante
+        minL[-1]=0.0
+        Cp=Cp-(minL.view(n+1,1)@ones_m)
+        minC,_=Cp.min(dim=0)
+        minC[-1]=0.0
+        Cp=Cp-ones_n@minC.view(1,m+1)
+        #nb_iter=max(1,nb_iter-2*dT)
+        b=eps_assigment_from_mapping(torch.exp(-T*Cp),nb_iter).view((n+1)*(m+1),1)
+        alpha=x.T@D@(b-x)+c.T@(b-x)
+#        t=offset/(offset+k)
+#        x=x+t*(b-x)
 
-        if alpha >0: #si positive, pas de meilleure solution
+        if alpha >0: # security check if b is not a local minima (does not occur with real hungarian)
+            print('alpha positif(',k,')',alpha.item())
             return x
-#            if .5*x.T@D@x+c.T@x > .5*b.T@D@b+c.T@b:
-#                print('last value:',.5*b.T@D@b+c.T@b)
-#                x=b
- #           break
         
-        #Pas adaptatif qui ne marche pas avec le gradient
+        #if .5*x.T@D@x+c.T@x > .5*b.T@D@b+c.T@b:
+            #print('last value:',.5*b.T@D@b+c.T@b)
+         #   xp=b
         
-#       beta=.5*(b-x).T@D@(b-x)
-#       t=-alpha/(2*beta)
+        beta=.5*(b-x).T@D@(b-x)
+        dirac_betaPos=(torch.sign(beta)+1.0)/2.0
+        t=(1.0-dirac_betaPos)+dirac_betaPos*min(-alpha/(2*beta),1)
 #        #        print('alpha=',alpha,'beta:',beta,'t=',t)
-#       if beta <=0 or t>=1:
-#           xp=b
-#       else:
-#           xp=x+t*(b-x)
+        #if beta <=0:
+        #    xp=b
+        #else:
+        x=x+t*(b-x)
         k=k+1
-        converged= (-alpha < 10**(-3))
-#        x=xp
+        converged= (-alpha < 10**(-6))
+#        print('cost(',k,')=',.5*x.T@D@x+c.T@x,'-alpha=',-alpha)
+#        print('converge=',converged)
         T=T+dT
-#        print('cost(',k,')=',.5*x.T@D@x+c.T@x) # valeur de la ged pour x
+        
 
     return x
                                      
