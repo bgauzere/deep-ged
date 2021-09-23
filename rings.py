@@ -6,14 +6,12 @@ from zipfile import ZipFile
 from data_tc15.graph_files import load_dataset
 from gklearn.utils.graphfiles import loadDataset
 import torch
-
 import networkx as nx
-
 import random 
 from sys import maxsize
 
-#Gs,y = loadDataset('../../DeepGED/Acyclic/trainset_0.ds')
-Gs,y = loadDataset('/home/ines/Documents/M2/Stage/stage_ged/Ines/DeepGED/MAO/dataset.ds')
+Gs,y = loadDataset('DeepGED/MAO/dataset.ds')
+#Gs,y = loadDataset('DeepGED/Acyclic/dataset_bps.ds')
 
 def build_rings(graph,level = None):
     return [build_ring(graph,node,level) for node in Gs[graph].nodes()]
