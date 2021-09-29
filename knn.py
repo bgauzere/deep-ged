@@ -258,15 +258,15 @@ if __name__ == "__main__":
     dict,nb_edge_labels = build_node_dictionnary(Gs)
     init_dataset(Gs,dict)
     
-    nodeSubInit=torch.load('/home/ines/Downloads/nodeSubInit',map_location=torch.device('cpu'),pickle_module=pkl)
-    nodeInsDelInit=torch.load('/home/ines/Downloads/nodeInsDelInit',map_location=torch.device('cpu'),pickle_module=pkl)
-    edgeInsDelInit=torch.load('/home/ines/Downloads/edgeInsDelInit',map_location=torch.device('cpu'),pickle_module=pkl)
-    edgeSubInit=torch.load('/home/ines/Downloads/edgeSubInit',map_location=torch.device('cpu'),pickle_module=pkl)
+    nodeSubInit=torch.load('nodeSubInit',map_location=torch.device('cpu'),pickle_module=pkl)
+    nodeInsDelInit=torch.load('nodeInsDelInit',map_location=torch.device('cpu'),pickle_module=pkl)
+    edgeInsDelInit=torch.load('edgeInsDelInit',map_location=torch.device('cpu'),pickle_module=pkl)
+    edgeSubInit=torch.load('edgeSubInit',map_location=torch.device('cpu'),pickle_module=pkl)
 
-    new_node_costs = torch.load('/home/ines/Downloads/nodeSub_min (8)',map_location=torch.device('cpu'),pickle_module=pkl)
-    new_nodeInsDel = torch.load('/home/ines/Downloads/nodeInsDel_min (8)',map_location=torch.device('cpu'),pickle_module=pkl)
-    new_edgeInsDel = torch.load('/home/ines/Downloads/edgeInsDel_min (8)',map_location=torch.device('cpu'),pickle_module=pkl)
-    new_edge_costs = torch.load('/home/ines/Downloads/edgeSub_min (8)',map_location=torch.device('cpu'),pickle_module=pkl)
+    new_node_costs = torch.load('nodeSub_min',map_location=torch.device('cpu'),pickle_module=pkl)
+    new_nodeInsDel = torch.load('nodeInsDel_min',map_location=torch.device('cpu'),pickle_module=pkl)
+    new_edgeInsDel = torch.load('edgeInsDel_min',map_location=torch.device('cpu'),pickle_module=pkl)
+    new_edge_costs = torch.load('edgeSub_min',map_location=torch.device('cpu'),pickle_module=pkl)
    
     nodeSubInit.requires_grad=False
     nodeInsDelInit.requires_grad=False
@@ -278,7 +278,7 @@ if __name__ == "__main__":
     new_edgeInsDel.requires_grad=False
     new_edge_costs.requires_grad=False
 
-    
+    # Experts' costs
     node_costs_2 = torch.ones(new_node_costs.shape)
     for i in range(node_costs_2.shape[0]):
         node_costs_2[i,i] = 0
@@ -299,10 +299,10 @@ if __name__ == "__main__":
     #(3) with no_grad, 68 mol : valid   train
     #(4) avec no_grad avec 40 mol : 44 train 75 valid
     
-    train_D = torch.load('/home/ines/Downloads/train_D (8)',map_location=torch.device('cpu'),pickle_module=pkl)
-    valid_D = torch.load('/home/ines/Downloads/valid_D (8)',map_location=torch.device('cpu'),pickle_module=pkl) 
-    train_L = torch.load('/home/ines/Downloads/train_L (8)',map_location=torch.device('cpu'),pickle_module=pkl) 
-    valid_L = torch.load('/home/ines/Downloads/valid_L (8)',map_location=torch.device('cpu'),pickle_module=pkl) 
+    train_D = torch.load('train_D',map_location=torch.device('cpu'),pickle_module=pkl)
+    valid_D = torch.load('valid_D',map_location=torch.device('cpu'),pickle_module=pkl) 
+    train_L = torch.load('train_L',map_location=torch.device('cpu'),pickle_module=pkl) 
+    valid_L = torch.load('valid_L',map_location=torch.device('cpu'),pickle_module=pkl) 
 
     print("train_D = ",train_D, len(train_D))
     print("train_L = ",train_L)
