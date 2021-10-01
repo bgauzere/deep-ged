@@ -258,15 +258,15 @@ if __name__ == "__main__":
     dict,nb_edge_labels = build_node_dictionnary(Gs)
     init_dataset(Gs,dict)
     
-    nodeSubInit=torch.load('nodeSubInit',map_location=torch.device('cpu'),pickle_module=pkl)
-    nodeInsDelInit=torch.load('nodeInsDelInit',map_location=torch.device('cpu'),pickle_module=pkl)
-    edgeInsDelInit=torch.load('edgeInsDelInit',map_location=torch.device('cpu'),pickle_module=pkl)
-    edgeSubInit=torch.load('edgeSubInit',map_location=torch.device('cpu'),pickle_module=pkl)
+    nodeSubInit=torch.load('pickle_files/nodeSubInit',map_location=torch.device('cpu'),pickle_module=pkl)
+    nodeInsDelInit=torch.load('pickle_files/nodeInsDelInit',map_location=torch.device('cpu'),pickle_module=pkl)
+    edgeInsDelInit=torch.load('pickle_files/edgeInsDelInit',map_location=torch.device('cpu'),pickle_module=pkl)
+    edgeSubInit=torch.load('pickle_files/edgeSubInit',map_location=torch.device('cpu'),pickle_module=pkl)
 
-    new_node_costs = torch.load('nodeSub_min',map_location=torch.device('cpu'),pickle_module=pkl)
-    new_nodeInsDel = torch.load('nodeInsDel_min',map_location=torch.device('cpu'),pickle_module=pkl)
-    new_edgeInsDel = torch.load('edgeInsDel_min',map_location=torch.device('cpu'),pickle_module=pkl)
-    new_edge_costs = torch.load('edgeSub_min',map_location=torch.device('cpu'),pickle_module=pkl)
+    new_node_costs = torch.load('pickle_files/nodeSub_min',map_location=torch.device('cpu'),pickle_module=pkl)
+    new_nodeInsDel = torch.load('pickle_files/nodeInsDel_min',map_location=torch.device('cpu'),pickle_module=pkl)
+    new_edgeInsDel = torch.load('pickle_files/edgeInsDel_min',map_location=torch.device('cpu'),pickle_module=pkl)
+    new_edge_costs = torch.load('pickle_files/edgeSub_min',map_location=torch.device('cpu'),pickle_module=pkl)
    
     nodeSubInit.requires_grad=False
     nodeInsDelInit.requires_grad=False
@@ -299,10 +299,10 @@ if __name__ == "__main__":
     #(3) with no_grad, 68 mol : valid   train
     #(4) avec no_grad avec 40 mol : 44 train 75 valid
     
-    train_D = torch.load('train_D',map_location=torch.device('cpu'),pickle_module=pkl)
-    valid_D = torch.load('valid_D',map_location=torch.device('cpu'),pickle_module=pkl) 
-    train_L = torch.load('train_L',map_location=torch.device('cpu'),pickle_module=pkl) 
-    valid_L = torch.load('valid_L',map_location=torch.device('cpu'),pickle_module=pkl) 
+    train_D = torch.load('pickle_files/train_D',map_location=torch.device('cpu'),pickle_module=pkl)
+    valid_D = torch.load('pickle_files/valid_D',map_location=torch.device('cpu'),pickle_module=pkl) 
+    train_L = torch.load('pickle_files/train_L',map_location=torch.device('cpu'),pickle_module=pkl) 
+    valid_L = torch.load('pickle_files/valid_L',map_location=torch.device('cpu'),pickle_module=pkl) 
 
     print("train_D = ",train_D, len(train_D))
     print("train_L = ",train_L)
