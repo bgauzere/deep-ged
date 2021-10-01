@@ -1,4 +1,8 @@
-                              Labels                   Labels étendus             Plongement
+
+
+
+
+                           Labels                   Labels étendus             Plongement
   ---------------- ---------------------------- ---------------------------- ---------------------
    Classification   DeepGraphWithNNTorch.ipynb   DeepGraphWithNNTorch.ipynb        gcn.ipynb
      Regression     DeepGraphRegression.ipynb    DeepGraphRegression.ipynb    gcnRegression.ipynb
