@@ -1,6 +1,6 @@
 **DeepGraphWithNNTorch.ipynb :**
 Lance le modèle sur MAO, apprend en 150 itérations et plot les différentes losses.
-Produits des fichiers pickle intermédiaires :
+Produits des fichiers pickle intermédiaires (tous conservés dans le répertoire pickle_files) :
 - les labels du train et du test set : train_L, valid_L
 - les data du train et du test set : train_D, valid_D
 - les coûts à la première itération : nodeInsDelInit, edgeInsDelInit, nodeSubInit, edgeSubInit
@@ -10,7 +10,7 @@ Produits des fichiers pickle intermédiaires :
 **knn.py :**
 lance les calculs sur l’échantillon de test et produit une classification report pour le train set et le test set.
 - lancer avec “python3 knn.py”
-- utilise les fichiers pickle produits par  DeepGraphWithNNTorch.ipynb 
+- utilise les fichiers pickle produits par DeepGraphWithNNTorch.ipynb 
 
 **TestingLosses.ipynb:**
 Différents plots de losses et de coûts à des fins de comparaison
