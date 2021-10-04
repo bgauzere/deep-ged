@@ -1,3 +1,8 @@
+**Packages à installer:**
+- Rings et dataloader :
+         pip install -i https://test.pypi.org/simple/ data-tc15
+- gklearn :  pip install graphkit-learn
+         
 **DeepGraphWithNNTorch.ipynb :**
 Lance le modèle sur MAO, apprend en 150 itérations et plot les différentes losses.
 Produits des fichiers pickle intermédiaires (tous conservés dans le répertoire pickle_files) :
