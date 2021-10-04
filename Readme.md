@@ -1,7 +1,13 @@
 **Packages à installer:**
+- numpy : pip install numpy
+- matplotlib : python -m pip install -U matplotlib
 - Rings et dataloader :
          pip install -i https://test.pypi.org/simple/ data-tc15
 - gklearn :  pip install graphkit-learn
+- sklearn : pip install -U scikit-learn
+- GPUtil : pip install GPUtil
+- torch : pip install torch
+- networkx : pip install networkx
          
 **DeepGraphWithNNTorch.ipynb :**
 Lance le modèle sur MAO, apprend en 150 itérations et plot les différentes losses.
