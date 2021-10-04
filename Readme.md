@@ -1,6 +1,6 @@
 **Packages à installer:**
 - numpy : pip install numpy
-- matplotlib : python -m pip install -U matplotlib
+- matplotlib : pip install matplotlib
 - Rings et dataloader :
          pip install -i https://test.pypi.org/simple/ data-tc15
 - gklearn :  pip install graphkit-learn
