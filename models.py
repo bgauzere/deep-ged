@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
-from layers import GraphConvolution, GraphPooling
+from layers_tmp import GraphConvolution, GraphPooling
 
 
 class GCN(nn.Module):
