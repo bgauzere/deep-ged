@@ -1,8 +1,30 @@
 import torch
 from torch.utils import data
+import pickle as pkl
 from torch import triu_indices
 
 from sklearn.model_selection import train_test_split
+
+def gen_loader_classification(graph_list, graph_label, saving_path=None):
+    graph_idx = torch.arange(0, len(graph_list), dtype=torch.int64)
+
+    [train_graph, valid_graph, train_label, valid_label] = train_test_split(graph_idx, graph_label, test_size=0.40,
+                                                                            train_size=0.60, shuffle=True,
+                                                                            stratify=graph_label)
+
+    [valid_graph, test_graph, valid_label, test_label] = train_test_split(valid_graph, valid_label, test_size=0.50,
+                                                                            train_size=0.50, shuffle=True,
+                                                                            stratify=valid_label)
+    if saving_path is not None:
+        torch.save(train_graph, 'pickle_files/'+saving_path+'/train_graph', pickle_module=pkl)
+        torch.save(valid_graph, 'pickle_files/'+saving_path+'/valid_graph', pickle_module=pkl)
+        torch.save(test_graph, 'pickle_files/'+saving_path+'/test_graph', pickle_module=pkl)
+        torch.save(train_label, 'pickle_files/'+saving_path+'/train_label', pickle_module=pkl)
+        torch.save(valid_label, 'pickle_files/'+saving_path+'/valid_label', pickle_module=pkl)
+        torch.save(test_label, 'pickle_files/'+saving_path+'/test_label', pickle_module=pkl)
+
+    return train_graph, valid_graph, test_graph, train_label, valid_label, test_label
+
 
 
 # Génération des loader's pour les différents dataSet (entrainement et validation)

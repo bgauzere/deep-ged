@@ -5,16 +5,16 @@ from data_manager.data_split import splitting
 import pickle as pkl
 from tqdm import tqdm
 
-def classification(model, Gs, nb_iter, device, y):
-    trainloader, validationloader, couples_train, yt, couples_test_train, yv = splitting(Gs, y)
+
+# def GEDclassification(model, graphList, nb_iter, device, yrings_andor_fw):
+
+
+def classification(model, Gs, nb_iter, device, y, rings_andor_fw):
+    trainloader, validationloader, test_loader= splitting(Gs, y, saving_path = rings_andor_fw)
     criterion = torch.nn.HingeEmbeddingLoss(margin=1.0, reduction='mean')
     criterionTri = triangular_constraint()
     optimizer = torch.optim.Adam(model.parameters())  # , lr=1e-3
 
-    train_input = couples_train.to(device)
-    # valid_input=couples_test_train.to(device)
-
-    target = yt.to(device)
     InsDel = np.empty((nb_iter, 2))
     node_costs, nodeInsDel, edge_costs, edgeInsDel = model.from_weighs_to_costs()
     nodeSub = np.empty((nb_iter, int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
@@ -25,7 +25,7 @@ def classification(model, Gs, nb_iter, device, y):
     min_valid_loss = np.inf
     iter_min_valid_loss = 0
 
-    for t in tqdm(range(nb_iter)):
+    for t in range(nb_iter):
         print(t, torch.cuda.memory_allocated())
         train_loss = 0.0
         valid_loss = 0.0
@@ -33,10 +33,6 @@ def classification(model, Gs, nb_iter, device, y):
 
         # The training part :
         for train_data, train_labels in trainloader:
-            print(type(train_data))
-            print(len(train_data))
-            print(train_data)
-            print(train_labels)
             # print(t, torch.cuda.memory_allocated())
             # Zero gradients, perform a backward pass, and update the weights.
             optimizer.zero_grad()
@@ -71,14 +67,13 @@ def classification(model, Gs, nb_iter, device, y):
             edgeInsDelInit = edgeInsDel
             nodeSubInit = node_costs
             edgeSubInit = edge_costs
-            torch.save(nodeInsDelInit, 'pickle_files/nodeInsDelInit', pickle_module=pkl)
-            torch.save(edgeInsDelInit, 'pickle_files/edgeInsDelInit', pickle_module=pkl)
-            torch.save(nodeSubInit, 'pickle_files/nodeSubInit', pickle_module=pkl)
-            torch.save(edgeSubInit, 'pickle_files/edgeSubInit', pickle_module=pkl)
+            torch.save(nodeInsDelInit, 'pickle_files/'+rings_andor_fw+'/nodeInsDelInit', pickle_module=pkl)
+            torch.save(edgeInsDelInit, 'pickle_files/'+rings_andor_fw+'/edgeInsDelInit', pickle_module=pkl)
+            torch.save(nodeSubInit, 'pickle_files/'+rings_andor_fw+'/nodeSubInit', pickle_module=pkl)
+            torch.save(edgeSubInit, 'pickle_files/'+rings_andor_fw+'/edgeSubInit', pickle_module=pkl)
 
             # Getting some information every 100 iterations, to follow the evolution
         if t % 100 == 99 or t == 0:
-            print('ged=', y_pred * target)  # train_labels
             print('Distances: ', y_pred)
             print('Loss Triangular:', triangularInq.item())
             print('node_costs : \n', node_costs)
@@ -141,8 +136,8 @@ def classification(model, Gs, nb_iter, device, y):
     print(' Min cost for nodeSub = ', nodeSub_min)
     print(' Min cost for edgeSub = ', edgeSub_min)
     # Saving the minimum costs into pickle files
-    torch.save(nodeInsDel_min, 'pickle_files/nodeInsDel_min', pickle_module=pkl)
-    torch.save(edgeInsDel_min, 'pickle_files/edgeInsDel_min', pickle_module=pkl)
-    torch.save(nodeSub_min, 'pickle_files/nodeSub_min', pickle_module=pkl)
-    torch.save(edgeSub_min, 'pickle_files/edgeSub_min', pickle_module=pkl)
+    torch.save(nodeInsDel_min, 'pickle_files/'+rings_andor_fw+'/nodeInsDel_min', pickle_module=pkl)
+    torch.save(edgeInsDel_min, 'pickle_files/'+rings_andor_fw+'/edgeInsDel_min', pickle_module=pkl)
+    torch.save(nodeSub_min, 'pickle_files/'+rings_andor_fw+'/nodeSub_min', pickle_module=pkl)
+    torch.save(edgeSub_min, 'pickle_files/'+rings_andor_fw+'/edgeSub_min', pickle_module=pkl)
     return InsDel, nodeSub, edgeSub, loss_plt, loss_valid_plt, loss_train_plt

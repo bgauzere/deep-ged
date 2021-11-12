@@ -6,36 +6,55 @@ from sklearn.model_selection import train_test_split
 import pickle as pkl
 import random
 import numpy as np
+import os
 
-def splitting(Gs, y):
-    my_list = [i for i in range(len(Gs))]
+def splitting(Gs, y, saving_path):
+    graph_idx = torch.arange(0, len(Gs), dtype=torch.int64)
 
-    [train_D, valid_D, train_L, valid_L] = train_test_split(my_list, y, test_size=0.20, train_size=0.80, shuffle=True,
-                                                            stratify=y)  # we stratify so that y is used as the class labels
+    [train_graph, valid_graph, train_label, valid_label] = train_test_split(graph_idx, y, test_size=0.40,
+                                                                            train_size=0.60, shuffle=True,
+                                                                            stratify=y)
+
+    [valid_graph, test_graph, valid_label, test_label] = train_test_split(valid_graph, valid_label, test_size=0.50,
+                                                                          train_size=0.50, shuffle=True,
+                                                                          stratify=valid_label)
+
     # We make sure that the two sets contain distinct graphs
-    train_D, valid_D = different_sets(train_D, valid_D, Gs)
+    train_graph, valid_graph = different_sets(train_graph, valid_graph, Gs)
 
-    couples_train, yt, couples_test_train, yv = creating_couples_after_splitting(train_D, valid_D, y)
+    couples_train, yt = creating_couples_after_splitting(train_graph, y)
+    couples_valid, yv = creating_couples_after_splitting(valid_graph, y)
+    couples_test, yte = creating_couples_after_splitting(test_graph, y)
     yt = torch.tensor(yt)
     yv = torch.tensor(yv)
+    yte = torch.tensor(yte)
     DatasetTrain = TensorDataset(couples_train, yt)
-    DatasetValid = TensorDataset(couples_test_train, yv)
+    DatasetValid = TensorDataset(couples_valid, yv)
+    DatasetTest = TensorDataset(couples_test, yte)
 
     trainloader = torch.utils.data.DataLoader(DatasetTrain, batch_size=len(couples_train), shuffle=True, drop_last=True,
                                               num_workers=0)  # 128, len(couples_train)
-    validationloader = torch.utils.data.DataLoader(DatasetValid, batch_size=len(couples_test_train), drop_last=True,
+    validationloader = torch.utils.data.DataLoader(DatasetValid, batch_size=len(couples_valid), drop_last=True,
+                                                   num_workers=0)  # 64,128,len(couples_test_train)
+
+    testloader = torch.utils.data.DataLoader(DatasetTest, batch_size=len(couples_test), drop_last=True,
                                                    num_workers=0)  # 64,128,len(couples_test_train)
 
     print(len(trainloader), len(validationloader))
     print(len(trainloader), len(validationloader))
 
-    # We save our sets in pickle files
-    torch.save(train_D, 'pickle_files/train_D', pickle_module=pkl)
-    torch.save(valid_D, 'pickle_files/valid_D', pickle_module=pkl)
-    torch.save(train_L, 'pickle_files/train_L', pickle_module=pkl)
-    torch.save(valid_L, 'pickle_files/valid_L', pickle_module=pkl)
+    if not os.path.exists('pickle_files/'+saving_path):
+        os.makedirs('pickle_files/'+saving_path)
 
-    return trainloader, validationloader, couples_train, yt, couples_test_train, yv
+    if saving_path is not None:
+        torch.save(train_graph, 'pickle_files/' + saving_path + '/train_graph', pickle_module=pkl)
+        torch.save(valid_graph, 'pickle_files/' + saving_path + '/valid_graph', pickle_module=pkl)
+        torch.save(test_graph, 'pickle_files/' + saving_path + '/test_graph', pickle_module=pkl)
+        torch.save(train_label, 'pickle_files/' + saving_path + '/train_label', pickle_module=pkl)
+        torch.save(valid_label, 'pickle_files/' + saving_path + '/valid_label', pickle_module=pkl)
+        torch.save(test_label, 'pickle_files/' + saving_path + '/test_label', pickle_module=pkl)
+
+    return trainloader, validationloader, testloader
 
 
 # Verifying that the two sets contain different graphs
@@ -52,9 +71,9 @@ def different_sets(my_train_D, my_valid_D, Gs):
     return my_train_D, my_valid_D
 
 
-def creating_couples_after_splitting(train_D, valid_D, y):
+def creating_couples_after_splitting(train_D, y):
     couples_train = []
-    couples_test_train = []
+
     for i, g1_idx in enumerate(train_D):
         for j, g2_idx in enumerate(train_D):
             n = g1_idx
@@ -64,15 +83,5 @@ def creating_couples_after_splitting(train_D, valid_D, y):
     for k in couples_train:
         if (y[k[0]] != y[k[1]]):
             yt[k] = -1.0
-    for i, g1_idx in enumerate(valid_D):
-        for j, g2_idx in enumerate(train_D):
-            n = g1_idx
-            m = g2_idx
-            couples_test_train.append([n, m])
 
-    yv = np.ones(len(couples_test_train))
-    for k in couples_test_train:
-        if (y[k[0]] != y[k[1]]):
-            yv[k] = -1.0
-
-    return torch.tensor(couples_train), yt, torch.tensor(couples_test_train), yv
+    return torch.tensor(couples_train), yt

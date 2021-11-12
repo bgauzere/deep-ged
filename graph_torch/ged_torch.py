@@ -43,12 +43,12 @@ def from_weighs_to_costs(self):
 
 
 # Extraction of all atom labels
-def build_node_dictionnary(GraphList):
+def build_node_dictionnary(GraphList, node_label, edge_label):
     node_labels = []
     for G in GraphList:
         for v in nx.nodes(G):
-            if not G.nodes[v][self.node_label][0] in node_labels:
-                node_labels.append(G.nodes[v][self.node_label][0])
+            if not G.nodes[v][node_label][0] in node_labels:
+                node_labels.append(G.nodes[v][node_label][0])
     node_labels.sort()
     # Extraction of a dictionary allowing to number each label by a number.
     dict = {}
@@ -58,43 +58,39 @@ def build_node_dictionnary(GraphList):
         k = k + 1
     print("node_labels : ", node_labels)
 
-    return dict, max(max([[int(G[e[0]][e[1]]['bond_type']) for e in G.edges()] for G in GraphList]))
+    return dict, max(max([[int(G[e[0]][e[1]][edge_label]) for e in G.edges()] for G in GraphList]))
 
 
 # Transforming a networkx to a torch tensor
-def from_networkx_to_tensor(self, G, dict):
+def from_networkx_to_tensor(G, dict, node_label):
     A = torch.tensor(nx.to_scipy_sparse_matrix(G, dtype=int, weight='bond_type').todense(), dtype=torch.int)
-    lab = [dict[G.nodes[v][self.node_label][0]] for v in nx.nodes(G)]
+    lab = [dict[G.nodes[v][node_label][0]] for v in nx.nodes(G)]
 
     return (A.view(1, A.shape[0] * A.shape[1]), torch.tensor(lab))
 
 
 # This function is used to construct a cost matrix C between two graphs g1 and g2, given the costs
-def construct_cost_matrix(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel):
-    n = card[g1].item()
-    m = card[g2].item()
+def construct_cost_matrix(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel, node_label, node_label_dict, nb_edge_labels):
+    n = g1.order()
+    m = g2.order()
 
-    # We use the no_grad to disable gradient calculation, that will reduce memory consumption
-    with torch.no_grad():
-        A1 = torch.zeros((n + 1, n + 1), dtype=torch.int)
-        A1[0:n, 0:n] = self.A[g1][0:n * n].view(n, n)
-        A2 = torch.zeros((m + 1, m + 1), dtype=torch.int)
-        A2[0:m, 0:m] = self.A[g2][0:m * m].view(m, m)
+    A1 = torch.zeros((n + 1, n + 1))
+    A, l1 = from_networkx_to_tensor(g1, node_label_dict, node_label)
+    A1[0:n, 0:n] = A.view(n, n)
+    A2 = torch.zeros((m + 1, m + 1))
+    A, l2 = from_networkx_to_tensor(g2, node_label_dict, node_label)
+    A2[0:m, 0:m] = A.view(m, m)
 
-    # costs: 0 node subs, 1 nodeIns/Del, 2 : edgeSubs, 3 edgeIns/Del
-
-    # C=cost[3]*torch.cat([torch.cat([C12[l][k] for k in range(n+1)],1) for l in range(n+1)])
-    C = edgeInsDel * self.matrix_edgeInsDel(A1, A2)
-    if self.nb_edge_labels > 1:
-        for k in range(self.nb_edge_labels):
-            for l in range(self.nb_edge_labels):
+    C = edgeInsDel * matrix_edgeInsDel(A1, A2)
+    if nb_edge_labels > 1:
+        for k in range(nb_edge_labels):
+            for l in range(nb_edge_labels):
                 if k != l:
-                    C.add_(self.matrix_edgeSubst(A1, A2, k + 1, l + 1).multiply_(edge_costs[k][l]))
-                    C = C + edge_costs[k][l] * self.matrix_edgeSubst(A1, A2, k + 1, l + 1)
+                    C.add_(matrix_edgeSubst(A1, A2, k + 1, l + 1).multiply_(edge_costs[k][l]))
+                    C = C + edge_costs[k][l] * matrix_edgeSubst(A1, A2, k + 1, l + 1)
 
-    l1 = self.labels[g1][0:n]
-    l2 = self.labels[g2][0:m]
-    D = torch.zeros((n + 1) * (m + 1), device=self.device)
+
+    D = torch.zeros((n + 1) * (m + 1))
     D[n * (m + 1):] = nodeInsDel
     D[n * (m + 1) + m] = 0
     D[[i * (m + 1) + m for i in range(n)]] = nodeInsDel
@@ -106,70 +102,97 @@ def construct_cost_matrix(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel
 
     return C
 
-
-def matrix_edgeInsDel(self, A1, A2):
-    Abin1 = (A1 != torch.zeros((A1.shape[0], A1.shape[1]), device=self.device))
-    Abin2 = (A2 != torch.zeros((A2.shape[0], A2.shape[1]), device=self.device))
+def matrix_edgeInsDel(A1, A2):
+    Abin1 = (A1 != torch.zeros((A1.shape[0], A1.shape[1])))
+    Abin2 = (A2 != torch.zeros((A2.shape[0], A2.shape[1])))
     C1 = torch.einsum('ij,kl->ijkl', torch.logical_not(Abin1), Abin2)
     C2 = torch.einsum('ij,kl->ijkl', Abin1, torch.logical_not(Abin2))
     C12 = torch.logical_or(C1, C2).int()
     return torch.cat(torch.unbind(torch.cat(torch.unbind(C12, 1), 1), 0), 1)
 
 
-def matrix_edgeSubst(self, A1, A2, lab1, lab2):
-    Abin1 = (A1 == lab1 * torch.ones((A1.shape[0], A1.shape[1]), device=self.device)).int()
-    Abin2 = (A2 == lab2 * torch.ones((A2.shape[0], A2.shape[1]), device=self.device)).int()
+def matrix_edgeSubst(A1, A2, lab1, lab2):
+    Abin1 = (A1 == lab1 * torch.ones((A1.shape[0], A1.shape[1]))).int()
+    Abin2 = (A2 == lab2 * torch.ones((A2.shape[0], A2.shape[1]))).int()
     C = torch.einsum('ij,kl->ijkl', Abin1, Abin2)
     return torch.cat(torch.unbind(torch.cat(torch.unbind(C, 1), 1), 0), 1).float()
 
 
 # ring_g, ring_h come from global ring with all graphs in so ring_g = rings['g'] and ring_h = rings['h']
-def lsape_populate_instance(self, first_graph, second_graph, average_node_cost, average_edge_cost, alpha, lbda):
-    g, h = Gs[first_graph], Gs[second_graph]
-    self.average_cost = [average_node_cost, average_edge_cost]
-    self.first_graph, self.second_graph = first_graph, second_graph
-
-    node_costs, nodeInsDel, edge_costs, edgeInsDel = self.from_weighs_to_costs()
-
-    lsape_instance = [[0 for _ in range(len(g) + 1)] for __ in range(len(h) + 1)]
+def lsape_populate_instance(first_graph, second_graph, average_node_cost, average_edge_cost, alpha, lbda, node_costs,
+                            nodeInsDel, edge_costs, edgeInsDel, ring_g, ring_h):
+    g, h = first_graph, second_graph
+    lsape_instance = [[0 for _ in range(len(g) + 1)]
+                      for __ in range(len(h) + 1)]
     for g_node_index in range(len(g) + 1):
         for h_node_index in range(len(h) + 1):
-            lsape_instance[h_node_index][g_node_index] = rings.compute_ring_distance(g, h, self.ring_g, self.ring_h,
-                                                                                     g_node_index, h_node_index,
-                                                                                     alpha, lbda, node_costs,
-                                                                                     nodeInsDel, edge_costs,
-                                                                                     edgeInsDel, first_graph,
-                                                                                     second_graph)
+            lsape_instance[h_node_index][g_node_index] = rings.compute_ring_distance(
+                g, h, ring_g, ring_h, g_node_index, h_node_index, alpha, lbda, node_costs, nodeInsDel, edge_costs,
+                edgeInsDel, first_graph, second_graph)
     for i in lsape_instance:
         i = torch.as_tensor(i)
     lsape_instance = torch.as_tensor(lsape_instance)
     return lsape_instance
 
 
-# Calculating a mapping based on the cost matrix C, using the rings function and a derivable Hungarian approximation
-def mapping_from_cost_sans_FW(self, n, m, g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel):
-    c_0 = self.lsape_populate_instance(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel)
+# Finding an adequate mapping based on the given costs, without using the Frank Wolfe method
+def mapping_from_cost_sans_FW(n, m, g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel, ring_g, ring_h):
+    c_0 = lsape_populate_instance(g1, g2, node_costs, edge_costs, nodeInsDel,
+                                  edgeInsDel, node_costs, nodeInsDel, edge_costs, edgeInsDel, ring_g, ring_h)
     x0 = svd.eps_assigment_from_mapping(torch.exp(-c_0), 10).view((n + 1) * (m + 1), 1)
     return x0
 
 
-# Calculating a mapping based on the cost matrix C, not using the rings function and using a derivable Hungarian approximation
-def new_mapping_from_cost(self, C, n, m, g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel):
+# Finding an adequate mapping based on the given costs, using the Frank Wolfe method, and the rings
+def new_mapping_from_cost(C, n, m, g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel, ring_g, ring_h):
     c = torch.diag(C)
-    D = C - torch.eye(C.shape[0], device=self.device) * c
-    x0 = svd.eps_assigment_from_mapping(torch.exp(-c), 10).view((n + 1) * (m + 1), 1)
+    c_0 = lsape_populate_instance(g1, g2, node_costs, edge_costs, nodeInsDel,
+                                  edgeInsDel, node_costs, nodeInsDel, edge_costs, edgeInsDel, ring_g, ring_h)
+    D = C - torch.eye(C.shape[0]) * c
+    x0 = svd.eps_assigment_from_mapping(torch.exp(-c_0), 10).view((n + 1) * (m + 1), 1)
+    return svd.franck_wolfe(x0, D, c, 5, 15, n, m)
+
+
+# Finding an adequate mapping based on the given costs, using the Frank Wolfe method, without the rings method
+def mapping_from_cost(C, n, m):
+    c = torch.diag(C)
+    D = C - torch.eye(C.shape[0]) * c
+    x0 = svd.eps_assigment_from_mapping(
+        torch.exp(-c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+    return svd.franck_wolfe(x0, D, c, 5, 15, n, m)
+
+
+def mapping_from_cost_sans_rings_sans_fw(C, n, m):
+    c = torch.diag(C)
+    x0 = svd.eps_assigment_from_mapping(
+        torch.exp(-c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
     return x0
 
 
-# Calculating a mapping based on the cost matrix C, not using the rings function and using the Frank Wolfe algorithm
-def mapping_from_cost(self, C, n, m):
+# A general function for finding an adequate mapping based on the given costs
+def mapping_from_cost_method(C, n, m, g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel, ring_g, ring_h,
+                             rings_andor_fw):
     c = torch.diag(C)
-    D = C - torch.eye(C.shape[0], device=self.device) * c
-    x0 = svd.eps_assigment_from_mapping(torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
-    x = svd.franck_wolfe(x0, D, c, 5, 10, n, m)
+    D = C - torch.eye(C.shape[0]) * c
 
-    def print_grad(grad):
-        if (grad.norm() != 0.0):
-            print(grad)
+    if (rings_andor_fw == 'rings_sans_fw'):
+        c_0 = lsape_populate_instance(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel, node_costs, nodeInsDel,
+                                      edge_costs, edgeInsDel, ring_g, ring_h)
+        x0 = svd.eps_assigment_from_mapping(torch.exp(-c_0), 10).view((n + 1) * (m + 1), 1)
+        res = x0
 
-    return x
+    elif (rings_andor_fw == 'rings_avec_fw'):
+        c_0 = lsape_populate_instance(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel, node_costs, nodeInsDel,
+                                      edge_costs, edgeInsDel, ring_g, ring_h)
+        x0 = svd.eps_assigment_from_mapping(torch.exp(-c_0), 10).view((n + 1) * (m + 1), 1)
+        res = svd.franck_wolfe(x0, D, c, 5, 15, n, m)
+
+    elif (rings_andor_fw == 'sans_rings_avec_fw'):
+        x0 = svd.eps_assigment_from_mapping(torch.exp(-c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+        res = svd.franck_wolfe(x0, D, c, 5, 15, n, m)
+
+    elif (rings_andor_fw == 'sans_rings_sans_fw'):
+        x0 = svd.eps_assigment_from_mapping(torch.exp(-c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+        res = x0
+
+    return res

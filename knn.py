@@ -248,8 +248,10 @@ def knn_ines(D_train,D_valid,train_L,valid_L):
 
 if __name__ == "__main__":
 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    Gs, y = loadDataset('../DeepGED/MAO/dataset.ds')
+    # device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    rings_andor_fw = 'sans_rings_sans_fw'
+    device = 'cpu'
+    Gs, y = loadDataset('DeepGED/MAO/dataset.ds')
     card = torch.tensor([G.order() for G in Gs]).to(device)
     card_max = card.max()
     A = torch.empty((len(Gs), card_max*card_max), dtype=torch.int, device=device)
@@ -258,15 +260,15 @@ if __name__ == "__main__":
     dict,nb_edge_labels = build_node_dictionnary(Gs)
     init_dataset(Gs,dict)
     
-    nodeSubInit=torch.load('pickle_files/nodeSubInit',map_location=torch.device('cpu'),pickle_module=pkl)
-    nodeInsDelInit=torch.load('pickle_files/nodeInsDelInit',map_location=torch.device('cpu'),pickle_module=pkl)
-    edgeInsDelInit=torch.load('pickle_files/edgeInsDelInit',map_location=torch.device('cpu'),pickle_module=pkl)
-    edgeSubInit=torch.load('pickle_files/edgeSubInit',map_location=torch.device('cpu'),pickle_module=pkl)
+    nodeSubInit=torch.load('pickle_files/'+rings_andor_fw+'/nodeSubInit',map_location=torch.device('cpu'),pickle_module=pkl)
+    nodeInsDelInit=torch.load('pickle_files/'+rings_andor_fw+'/nodeInsDelInit',map_location=torch.device('cpu'),pickle_module=pkl)
+    edgeInsDelInit=torch.load('pickle_files/'+rings_andor_fw+'/edgeInsDelInit',map_location=torch.device('cpu'),pickle_module=pkl)
+    edgeSubInit=torch.load('pickle_files/'+rings_andor_fw+'/edgeSubInit',map_location=torch.device('cpu'),pickle_module=pkl)
 
-    new_node_costs = torch.load('pickle_files/nodeSub_min',map_location=torch.device('cpu'),pickle_module=pkl)
-    new_nodeInsDel = torch.load('pickle_files/nodeInsDel_min',map_location=torch.device('cpu'),pickle_module=pkl)
-    new_edgeInsDel = torch.load('pickle_files/edgeInsDel_min',map_location=torch.device('cpu'),pickle_module=pkl)
-    new_edge_costs = torch.load('pickle_files/edgeSub_min',map_location=torch.device('cpu'),pickle_module=pkl)
+    new_node_costs = torch.load('pickle_files/'+rings_andor_fw+'/nodeSub_min',map_location=torch.device('cpu'),pickle_module=pkl)
+    new_nodeInsDel = torch.load('pickle_files/'+rings_andor_fw+'/nodeInsDel_min',map_location=torch.device('cpu'),pickle_module=pkl)
+    new_edgeInsDel = torch.load('pickle_files/'+rings_andor_fw+'/edgeInsDel_min',map_location=torch.device('cpu'),pickle_module=pkl)
+    new_edge_costs = torch.load('pickle_files/'+rings_andor_fw+'/edgeSub_min',map_location=torch.device('cpu'),pickle_module=pkl)
    
     nodeSubInit.requires_grad=False
     nodeInsDelInit.requires_grad=False
@@ -291,7 +293,7 @@ if __name__ == "__main__":
     edgeInsDel_2 = torch.tensor(3.0)
     
 
-    rings_andor_fw = 'rings_sans_fw'  #'sans_rings_sans_fw' #sans_rings_avec_fw
+ #'sans_rings_sans_fw' #sans_rings_avec_fw
    
     #(1) with no_grad, 68 mol : 86 valid 54 train
     #() sans no_grad avec 40 mol : 81 train 75 valid
@@ -299,10 +301,10 @@ if __name__ == "__main__":
     #(3) with no_grad, 68 mol : valid   train
     #(4) avec no_grad avec 40 mol : 44 train 75 valid
     
-    train_D = torch.load('pickle_files/train_D',map_location=torch.device('cpu'),pickle_module=pkl)
-    valid_D = torch.load('pickle_files/valid_D',map_location=torch.device('cpu'),pickle_module=pkl) 
-    train_L = torch.load('pickle_files/train_L',map_location=torch.device('cpu'),pickle_module=pkl) 
-    valid_L = torch.load('pickle_files/valid_L',map_location=torch.device('cpu'),pickle_module=pkl) 
+    train_D = torch.load('pickle_files/'+rings_andor_fw+'/train_graph',map_location=torch.device('cpu'),pickle_module=pkl)
+    valid_D = torch.load('pickle_files/'+rings_andor_fw+'/test_graph',map_location=torch.device('cpu'),pickle_module=pkl)
+    train_L = torch.load('pickle_files/'+rings_andor_fw+'/train_label',map_location=torch.device('cpu'),pickle_module=pkl)
+    valid_L = torch.load('pickle_files/'+rings_andor_fw+'/test_label',map_location=torch.device('cpu'),pickle_module=pkl)
 
     print("train_D = ",train_D, len(train_D))
     print("train_L = ",train_L)

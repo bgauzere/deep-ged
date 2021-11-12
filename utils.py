@@ -14,7 +14,6 @@ def encode_onehot(labels):
                              dtype=np.int32)
     return labels_onehot
 
-
 def load_MAO():
     import networkx as nx
     from gklearn.utils.graphfiles import loadDataset
