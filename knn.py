@@ -143,14 +143,14 @@ def mapping_from_cost_method(C,n,m,g1,g2,node_costs,edge_costs,nodeInsDel,edgeIn
         c_0 = lsape_populate_instance(g1, g2, node_costs, edge_costs, nodeInsDel,edgeInsDel, node_costs, nodeInsDel, edge_costs, edgeInsDel, ring_g, ring_h)
         x0 = svd.eps_assigment_from_mapping(torch.exp(-c_0), 10).view((n+1)*(m+1), 1)
         res = x0
-    if (rings_andor_fw=='rings_avec_fw'):
+    elif (rings_andor_fw=='rings_avec_fw'):
         c_0 = lsape_populate_instance(g1, g2, node_costs, edge_costs, nodeInsDel,edgeInsDel, node_costs, nodeInsDel, edge_costs, edgeInsDel, ring_g, ring_h)
         x0 = svd.eps_assigment_from_mapping(torch.exp(-c_0),10).view((n+1)*(m+1),1)
         res = svd.franck_wolfe(x0,D,c,5,15,n,m)
-    if (rings_andor_fw=='sans_rings_avec_fw'):
+    elif (rings_andor_fw=='sans_rings_avec_fw'):
         x0 = svd.eps_assigment_from_mapping(torch.exp(-c.view(n+1, m+1)), 10).view((n+1)*(m+1), 1)
         res = svd.franck_wolfe(x0, D, c, 5, 15, n, m)
-    if (rings_andor_fw=='sans_rings_sans_fw'):
+    else:
         x0 = svd.eps_assigment_from_mapping(torch.exp(-c.view(n+1, m+1)), 10).view((n+1)*(m+1), 1)
         res = x0
     return res
@@ -162,17 +162,16 @@ def new_primary_ged(g1,g2,n,m,node_costs, edge_costs, nodeInsDel, edgeInsDel, ri
         C = construct_cost_matrix(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel)
         S = mapping_from_cost_method(C,n,m,g1,g2,node_costs,edge_costs,nodeInsDel,edgeInsDel, ring_g, ring_h, rings_andor_fw)
         #S=mapping_from_cost_sans_FW(n,m,g1,g2,node_costs,edge_costs,nodeInsDel,edgeInsDel,ring_g,ring_h)
-    
-    if (rings_andor_fw=='rings_avec_fw'):
+    elif (rings_andor_fw=='rings_avec_fw'):
         ring_g,ring_h = rings.build_rings(g1,edgeInsDel.size()), rings.build_rings(g2,edgeInsDel.size())
         C = construct_cost_matrix(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel)
         S = mapping_from_cost_method(C,n,m,g1,g2,node_costs,edge_costs,nodeInsDel,edgeInsDel, ring_g, ring_h, rings_andor_fw)
         #S = new_mapping_from_cost(C,n,m,g1,g2,node_costs,edge_costs,nodeInsDel,edgeInsDel, ring_g, ring_h)
-    if (rings_andor_fw=='sans_rings_avec_fw'):
+    elif (rings_andor_fw=='sans_rings_avec_fw'):
         C = construct_cost_matrix(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel)
         S = mapping_from_cost_method(C,n,m,g1,g2,node_costs,edge_costs,nodeInsDel,edgeInsDel, 0, 0, rings_andor_fw)
         #S = mapping_from_cost(C, n, m)
-    if (rings_andor_fw=='sans_rings_sans_fw'):
+    else:
         C = construct_cost_matrix(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel)
         S = mapping_from_cost_method(C,n,m,g1,g2,node_costs,edge_costs,nodeInsDel,edgeInsDel, 0, 0, rings_andor_fw)
         #S = mapping_from_cost_sans_rings_sans_fw(C,n,m)
@@ -209,7 +208,9 @@ def calculates_distances(rings_andor_fw, node_costs, edge_costs, nodeInsDel, edg
             
             ged_k=new_primary_ged(g1_idx,g2_idx,n,m,node_costs, edge_costs, nodeInsDel, edgeInsDel, rings_andor_fw)
             # Filling the corresponding matrix of ged D_train :
-            D_train[i,j]=ged_k
+            if ged_k<0:
+                ged_k = 255
+            D_train[i,j]=abs(ged_k)
 
     print("now test : ")
     # Calculate ged between couples of graphs (test graphs*train graphs)
@@ -222,8 +223,17 @@ def calculates_distances(rings_andor_fw, node_costs, edge_costs, nodeInsDel, edg
             
             # Filling the corresponding matrix of ged D_valid :
             ged_k=new_primary_ged(g1_idx,g2_idx,n,m,node_costs, edge_costs, nodeInsDel, edgeInsDel, rings_andor_fw)
-            D_valid[i,j]=ged_k
-            
+            if ged_k<0:
+                ged_k = 255
+            D_valid[i,j]=abs(ged_k)
+
+    plt.subplot(121)
+    plt.imshow(D_train)
+    plt.subplot(122)
+    plt.imshow(D_valid)
+    # plt.savefig(rings_andor_fw+".png")
+    plt.show()
+
     print("D_valid.shape = ", D_valid.shape)
     return D_train,D_valid,train_L,valid_L 
 
@@ -249,7 +259,7 @@ def knn_ines(D_train,D_valid,train_L,valid_L):
 if __name__ == "__main__":
 
     # device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    rings_andor_fw = 'sans_rings_sans_fw'
+    rings_andor_fw = 'sans_rings_avec_fw'
     device = 'cpu'
     Gs, y = loadDataset('DeepGED/MAO/dataset.ds')
     card = torch.tensor([G.order() for G in Gs]).to(device)
@@ -311,9 +321,9 @@ if __name__ == "__main__":
     print("valid_D = ",valid_D, len(valid_D))
     print("valid_L = ",valid_L) 
     
-    D_train,D_valid,train_L,valid_L=calculates_distances(rings_andor_fw, new_node_costs, new_edge_costs, new_nodeInsDel, new_edgeInsDel,train_D, valid_D,train_L,valid_L)
-    #D_train,D_valid,train_L,valid_L=calculates_distances(rings_andor_fw, nodeSubInit, edgeSubInit, nodeInsDelInit, edgeInsDelInit,train_D, valid_D,train_L,valid_L)
+    # D_train,D_valid,train_L,valid_L=calculates_distances(rings_andor_fw, new_node_costs, new_edge_costs, new_nodeInsDel, new_edgeInsDel,train_D, valid_D,train_L,valid_L)
+    D_train,D_valid,train_L,valid_L=calculates_distances(rings_andor_fw, nodeSubInit, edgeSubInit, nodeInsDelInit, edgeInsDelInit,train_D, valid_D,train_L,valid_L)
 
-    #D_train,D_valid,train_L,valid_L=calculates_distances(rings_andor_fw, node_costs_2, edge_costs_2, nodeInsDel_2, edgeInsDel_2,train_D, valid_D,train_L,valid_L)
+    # D_train,D_valid,train_L,valid_L=calculates_distances(rings_andor_fw, node_costs_2, edge_costs_2, nodeInsDel_2, edgeInsDel_2,train_D, valid_D,train_L,valid_L)
     print(D_train,len(D_train),len(D_train[0]))
     knn_ines(D_train,D_valid,train_L,valid_L)

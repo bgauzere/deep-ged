@@ -1,7 +1,11 @@
 import torch
 from graph_torch import rings
 import svd
+from gklearn.utils.graphfiles import loadDataset
 import networkx as nx
+
+Gs, y = loadDataset('DeepGED/MAO/dataset.ds')
+
 
 def from_weighs_to_costs(self):
     # We apply the ReLU (rectified linear unit) function element-wise
@@ -119,19 +123,25 @@ def matrix_edgeSubst(A1, A2, lab1, lab2):
 
 
 # ring_g, ring_h come from global ring with all graphs in so ring_g = rings['g'] and ring_h = rings['h']
-def lsape_populate_instance(first_graph, second_graph, average_node_cost, average_edge_cost, alpha, lbda, node_costs,
-                            nodeInsDel, edge_costs, edgeInsDel, ring_g, ring_h):
-    g, h = first_graph, second_graph
-    lsape_instance = [[0 for _ in range(len(g) + 1)]
-                      for __ in range(len(h) + 1)]
+def lsape_populate_instance(first_graph, second_graph, average_node_cost, average_edge_cost, alpha, lbda, node_costs, nodeInsDel, edge_costs, edgeInsDel, ring_g, ring_h):  # ring_g, ring_h come from global ring with all graphs in so ring_g = rings['g'] and ring_h = rings['h']
+    g, h = Gs[first_graph], Gs[second_graph]
+    average_cost = [average_node_cost, average_edge_cost]
+    first_graph, second_graph = first_graph, second_graph
+
+    # node_costs, nodeInsDel, edge_costs, edgeInsDel = from_weighs_to_costs()
+
+    lsape_instance = [[0 for _ in range(len(g) + 1)] for __ in range(len(h) + 1)]
     for g_node_index in range(len(g) + 1):
         for h_node_index in range(len(h) + 1):
-            lsape_instance[h_node_index][g_node_index] = rings.compute_ring_distance(
-                g, h, ring_g, ring_h, g_node_index, h_node_index, alpha, lbda, node_costs, nodeInsDel, edge_costs,
-                edgeInsDel, first_graph, second_graph)
+            lsape_instance[h_node_index][g_node_index] = rings.compute_ring_distance(g, h, ring_g, ring_h,
+                                                                                     g_node_index, h_node_index, alpha,
+                                                                                     lbda, node_costs, nodeInsDel,
+                                                                                     edge_costs, edgeInsDel,
+                                                                                     first_graph, second_graph)
     for i in lsape_instance:
         i = torch.as_tensor(i)
     lsape_instance = torch.as_tensor(lsape_instance)
+    # print(type(lsape_instance))
     return lsape_instance
 
 
@@ -178,21 +188,21 @@ def mapping_from_cost_method(C, n, m, g1, g2, node_costs, edge_costs, nodeInsDel
     if (rings_andor_fw == 'rings_sans_fw'):
         c_0 = lsape_populate_instance(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel, node_costs, nodeInsDel,
                                       edge_costs, edgeInsDel, ring_g, ring_h)
-        x0 = svd.eps_assigment_from_mapping(torch.exp(-c_0), 10).view((n + 1) * (m + 1), 1)
+        x0 = svd.eps_assign2(torch.exp(-.5 * c_0.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
         res = x0
 
     elif (rings_andor_fw == 'rings_avec_fw'):
         c_0 = lsape_populate_instance(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel, node_costs, nodeInsDel,
                                       edge_costs, edgeInsDel, ring_g, ring_h)
-        x0 = svd.eps_assigment_from_mapping(torch.exp(-c_0), 10).view((n + 1) * (m + 1), 1)
+        x0=svd.eps_assign2(torch.exp(-.5*c_0.view(n+1,m+1)),10).view((n+1)*(m+1),1)
         res = svd.franck_wolfe(x0, D, c, 5, 15, n, m)
 
     elif (rings_andor_fw == 'sans_rings_avec_fw'):
-        x0 = svd.eps_assigment_from_mapping(torch.exp(-c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+        x0=svd.eps_assign2(torch.exp(-.5*c.view(n+1,m+1)),10).view((n+1)*(m+1),1)
         res = svd.franck_wolfe(x0, D, c, 5, 15, n, m)
 
     elif (rings_andor_fw == 'sans_rings_sans_fw'):
-        x0 = svd.eps_assigment_from_mapping(torch.exp(-c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+        x0=svd.eps_assign2(torch.exp(-.5*c.view(n+1,m+1)),10).view((n+1)*(m+1),1)
         res = x0
 
     return res

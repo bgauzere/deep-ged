@@ -8,16 +8,33 @@ import random
 import numpy as np
 import os
 
-def splitting(Gs, y, saving_path):
+def splitting(Gs, y, saving_path=None, already_divided=False):
     graph_idx = torch.arange(0, len(Gs), dtype=torch.int64)
 
-    [train_graph, valid_graph, train_label, valid_label] = train_test_split(graph_idx, y, test_size=0.40,
+    if already_divided and saving_path is not None:
+        print("Already divided dataset : loading...")
+        train_graph = torch.load('pickle_files/' + saving_path + '/train_graph', map_location=torch.device('cpu'),
+                                 pickle_module=pkl)
+        valid_graph = torch.load('pickle_files/' + saving_path + '/valid_graph', map_location=torch.device('cpu'),
+                                 pickle_module=pkl)
+        test_graph = torch.load('pickle_files/' + saving_path + '/test_graph', map_location=torch.device('cpu'),
+                                pickle_module=pkl)
+        train_label = torch.load('pickle_files/' + saving_path + '/train_label', map_location=torch.device('cpu'),
+                                 pickle_module=pkl)
+        valid_label = torch.load('pickle_files/' + saving_path + '/valid_label', map_location=torch.device('cpu'),
+                                 pickle_module=pkl)
+        test_label = torch.load('pickle_files/' + saving_path + '/test_label', map_location=torch.device('cpu'),
+                                pickle_module=pkl)
+    else:
+        [train_graph, valid_graph, train_label, valid_label] = train_test_split(graph_idx, y, test_size=0.40,
                                                                             train_size=0.60, shuffle=True,
                                                                             stratify=y)
 
-    [valid_graph, test_graph, valid_label, test_label] = train_test_split(valid_graph, valid_label, test_size=0.50,
+        [valid_graph, test_graph, valid_label, test_label] = train_test_split(valid_graph, valid_label, test_size=0.50,
                                                                           train_size=0.50, shuffle=True,
                                                                           stratify=valid_label)
+
+
 
     # We make sure that the two sets contain distinct graphs
     train_graph, valid_graph = different_sets(train_graph, valid_graph, Gs)
@@ -46,7 +63,7 @@ def splitting(Gs, y, saving_path):
     if not os.path.exists('pickle_files/'+saving_path):
         os.makedirs('pickle_files/'+saving_path)
 
-    if saving_path is not None:
+    if saving_path is not None and not already_divided:
         torch.save(train_graph, 'pickle_files/' + saving_path + '/train_graph', pickle_module=pkl)
         torch.save(valid_graph, 'pickle_files/' + saving_path + '/valid_graph', pickle_module=pkl)
         torch.save(test_graph, 'pickle_files/' + saving_path + '/test_graph', pickle_module=pkl)

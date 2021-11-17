@@ -248,6 +248,30 @@ def eps_assigment_from_mapping(S,nb_iter):
         
     return Sk
 
+def eps_assign2(S, nb_iter):
+    ones_n = torch.ones(S.shape[0], device=S.device)
+    ones_m = torch.ones(S.shape[1], device=S.device)
+    c = ones_m
+    converged = False
+    i = 0
+    while i <= nb_iter and not converged:
+        rp = 1.0 / (S @ c)
+        rp[-1] = 1.0
+        if i >= 1:
+            norm_r = torch.linalg.norm(r / rp - torch.ones_like(r / rp), ord=float('inf'))
+        r = rp
+        cp = 1.0 / (S.T @ r)
+        cp[-1] = 1.0
+        norm_c = torch.linalg.norm(c / cp - torch.ones_like(c / cp), ord=float('inf'))
+        c = cp
+        if i >= 1:
+            converged = (norm_r <= 1e-2) and (norm_c <= 1e-2)
+        i += 1
+    #        print('r=',r)
+    #        print('c=',c)
+    return torch.diag(r) @ S @ torch.diag(c)
+
+
 def franck_wolfe(x0,D,c,offset,kmax,n,m):
     k=0
     L=c.T@x0
