@@ -9,7 +9,8 @@ import sys
 
 
 class GedLayer(nn.Module):
-    def __init__(self, GraphList, rings_andor_fw, normalize=False, node_label="label"):
+    def __init__(self, GraphList, rings_andor_fw, normalize=False, node_label="label",
+                 verbose=True):
 
         super(GedLayer, self).__init__()
 
@@ -19,15 +20,14 @@ class GedLayer(nn.Module):
         self.rings_andor_fw = rings_andor_fw
 
         # on calcule les labels de l'ensemble de graphlist
-        dict, self.nb_edge_labels = self.build_node_dictionnary()
-        self.nb_labels = len(dict)
+        self.label_dict, self.nb_edge_labels = self.build_node_dictionnary()
+        self.nb_labels = len(self.label_dict)
 
         # TODO : a virer autre part ?
         self.device = torch.device('cpu')
         self._init_weights()
         self.card = torch.tensor([G.order()
                                  for G in GraphList]).to(self.device)
-        card_max = self.card.max()
         self._init_local_representation_of_graphs()
         if (verbose):
             print('adjacency matrices', self.A)
@@ -39,14 +39,15 @@ class GedLayer(nn.Module):
         Initialise le stockage des matrices d'adjacences et de labels sous forme de tensor torch
         """
         # matrices d'adjacences de tous les graphes de GraphList
+        card_max = self.card.max()
         self.A = torch.empty(
-            (len(GraphList), card_max * card_max), dtype=torch.int, device=self.device)
+            (len(self.GraphList), card_max * card_max), dtype=torch.int, device=self.device)
         # Matrice de labels (discrets) de l'ensemble des graphes de GraphList
         self.labels = torch.empty(
-            (len(GraphList), card_max), dtype=torch.int, device=self.device)
+            (len(self.GraphList), card_max), dtype=torch.int, device=self.device)
 
-        for k in range(len(GraphList)):
-            A, l = self.from_networkx_to_tensor(GraphList[k], dict)
+        for k in range(len(self.GraphList)):
+            A, l = self.from_networkx_to_tensor(self.GraphList[k])
             # !!! A.shape[1] = nb lignes du graphe ?
             self.A[k, 0:A.shape[1]] = A[0]
             self.labels[k, 0:l.shape[0]] = l
@@ -220,12 +221,13 @@ class GedLayer(nn.Module):
         print(node_labels)
         print(dict, len(dict))
 
-        return dict, max(max([[int(G[e[0]][e[1]]['bond_type']) for e in G.edges()] for G in GraphList]))
+        return dict, max(max([[int(G[e[0]][e[1]]['bond_type']) for e in G.edges()] for G in self.GraphList]))
 
-    def from_networkx_to_tensor(self, G, dict):
+    def from_networkx_to_tensor(self, G):
         A = torch.tensor(nx.to_scipy_sparse_matrix(
             G, dtype=int, weight='bond_type').todense(), dtype=torch.int)
-        lab = [dict[G.nodes[v][self.node_label][0]] for v in nx.nodes(G)]
+        lab = [self.label_dict[G.nodes[v][self.node_label][0]]
+               for v in nx.nodes(G)]
         # Nécessaire la premiere dimension ? On prend A[0] après
         return (A.view(1, A.shape[0] * A.shape[1]), torch.tensor(lab))
 
