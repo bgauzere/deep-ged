@@ -353,7 +353,7 @@ if __name__ == "__main__":
 
 
     rings_andor_fw = "sans_rings_avec_fw"
-    weights = "experts"
+    weights = "learned"
 
     cns = None
 

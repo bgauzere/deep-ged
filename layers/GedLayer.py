@@ -1,26 +1,20 @@
-
-import numpy as np
-import networkx as nx
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import svd
-from svd import iterated_power as compute_major_axis
-import GPUtil
+from graph_torch import rings, svd, ged_torch
 from tqdm import tqdm
+from torch import nn
+import networkx as nx
+import numpy as np
+import torch
+from svd import iterated_power as compute_major_axis
+import sys
 
-torch.backends.cudnn.benchmark = True
-torch.backends.cudnn.enabled = True
-# torch.autograd.set_detect_anomaly(True)
-import rings
 
-
-class Net(nn.Module):
-
-    def __init__(self, GraphList, normalize=False, node_label='label'):
-        super(Net, self).__init__()
+class GedLayer(nn.Module):
+    def __init__(self, GraphList, rings_andor_fw, normalize=False, node_label="label"):
+        super(GedLayer, self).__init__()
+        self.GraphList = GraphList
         self.normalize = normalize
         self.node_label = node_label
+        self.rings_andor_fw = rings_andor_fw
         dict, self.nb_edge_labels = self.build_node_dictionnary(GraphList)
         self.nb_labels = len(dict)
         print(self.nb_edge_labels)
@@ -28,13 +22,6 @@ class Net(nn.Module):
         self.device = torch.device('cpu')
         nb_node_pair_label = int(self.nb_labels * (self.nb_labels - 1) / 2.0)
         nb_edge_pair_label = int(self.nb_edge_labels * (self.nb_edge_labels - 1) / 2)
-        #
-        # self.node_weighs=nn.Parameter(torch.tensor(1.0/(nb_node_pair_label+nb_edge_pair_label+2))+(1e-3)*torch.rand(int(self.nb_labels*(self.nb_labels-1)/2+1),requires_grad=True,device=self.device)) # all substitution costs+ nodeIns/Del. old version: 0 node subs, 1 nodeIns/Del, 2 : edgeSubs, 3 edgeIns/Del
-        # self.edge_weighs=nn.Parameter(torch.tensor(1.0/(nb_node_pair_label+nb_edge_pair_label+2))+(1e-3)*torch.rand(nb_edge_pair_label+1,requires_grad=True,device=self.device)) #edgeIns/Del
-
-        # self.node_weighs = nn.Parameter(torch.tensor(nweighs, requires_grad=True, dtype=torch.float,
-        #                                              device=self.device))  # all substitution costs+ nodeIns/Del. old version: 0 node subs, 1 nodeIns/Del, 2 : edgeSubs, 3 edgeIns/Del
-        #
 
         nweighs = (1e-2) * (1.0 + 1e-1 * np.random.rand(int(self.nb_labels * (self.nb_labels - 1) / 2 + 1)))
         nweighs[-1] = 3.0e-2
@@ -67,47 +54,84 @@ class Net(nn.Module):
         print('node labels', self.labels)
         print('order of the graphs', self.card)
 
+
     def forward(self, input):
-        ged = torch.zeros(len(input)).to(self.device)
-        node_costs, nodeInsDel, edge_costs, edgeInsDel = self.from_weighs_to_costs()
+        g1 = input[0]
+        g2 = input[1]
 
-        torch.cuda.empty_cache()
-        GPUtil.showUtilization(all=True)
+        cns, cndl, ces, cedl = self.from_weighs_to_costs()
 
-        # print('weighs:',self.weighs.device,'device:',self.device,'card:',self.card.device,'A:',self.A.device,'labels:',self.labels.device)
-        for k in tqdm(range(len(input))):
-            # print('Dans le forward')
-            # GPUtil.showUtilization(all=True)
+        n = self.card[g1]
+        m = self.card[g2]
 
-            g1 = input[k][0]
-            g2 = input[k][1]
-            n = self.card[g1]
-            m = self.card[g2]
-            # with torch.no_grad():
-            C = self.construct_cost_matrix(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel)
+        C = self.construct_cost_matrix(g1, g2, cns, ces, cndl, cedl)
+        c = torch.diag(C)
+        D = C - torch.eye(C.shape[0], device=self.device) * c
 
-            # self.ring_g,self.ring_h = rings.build_rings(g1,edgeInsDel.size()), rings.build_rings(g2,edgeInsDel.size())
-            # c_0=self.lsape_populate_instance(g1,g2,node_costs,edge_costs,nodeInsDel,edgeInsDel)
+        if self.rings_andor_fw == 'rings_sans_fw':
+            self.ring_g,self.ring_h = rings.build_rings(g1,cedl.size()), rings.build_rings(g2,cedl.size())
+            c_0=self.lsape_populate_instance(g1,g2,cns,ces,cndl,cedl)
+            print(C.shape, c_0.shape)
+            S = svd.eps_assign2(torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+        elif self.rings_andor_fw == 'rings_avec_fw':
+            self.ring_g,self.ring_h = rings.build_rings(g1,cedl.size()), rings.build_rings(g2,cedl.size())
+            c_0=self.lsape_populate_instance(g1,g2,cns,ces,cndl,cedl)
+            print(C.shape, c_0.shape)
+            x0 = svd.eps_assign2(torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+            S = svd.franck_wolfe(x0, D, c, 5, 10, n, m)
+        elif self.rings_andor_fw == 'sans_rings_avec_fw':
+            x0 = svd.eps_assign2(torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+            S = svd.franck_wolfe(x0, D, c, 5, 10, n, m)
+        elif self.rings_andor_fw == 'sans_rings_sans_fw':
+            S = svd.eps_assign2(torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+        else:
+            print("Error : rings_andor_fw => value not understood")
+            sys.exit()
 
-            # S=self.mapping_from_similarity(C,n,m)
-            #            print('g1,g2=',g1.item(),g2.item())
-            S = self.mapping_from_cost(C, n, m)
-            v = torch.flatten(S)
-
-            normalize_factor = 1.0
-            if self.normalize:
-                nb_edge1 = (self.A[g1][0:n * n] != torch.zeros(n * n, device=self.device)).int().sum()
-                nb_edge2 = (self.A[g2][0:m * m] != torch.zeros(m * m, device=self.device)).int().sum()
-                normalize_factor = nodeInsDel * (n + m) + edgeInsDel * (nb_edge1 + nb_edge2)
-            c = torch.diag(C)
-            D = C - torch.eye(C.shape[0], device=self.device) * c
-            ged[k] = (.5 * v.T @ D @ v + c.T @ v) / normalize_factor
-
-        max = torch.max(ged)
-        min = torch.min(ged)
-        ged = (ged - min) / (max - min)
-
+        v = torch.flatten(S)
+        c = torch.diag(C)
+        D = C - torch.eye(C.shape[0], ) * c
+        ged = (.5 * v.T @ D @ v + c.T @ v)
         return ged
+
+    def from_weighs_to_costs(self):
+        # We apply the ReLU (rectified linear unit) function element-wise
+        relu = torch.nn.ReLU()
+        cn = relu(self.node_weighs)
+        ce = relu(self.edge_weighs)
+        edgeInsDel = ce[-1]
+
+        # Or we can use the exponential function
+        # Returns a new tensor with the exponential of the elements of the input tensor
+        '''
+        #cn=torch.exp(self.node_weighs)
+        #ce=torch.exp(self.edge_weighs)
+        cn=self.node_weighs*self.node_weighs
+        ce=self.edge_weighs*self.edge_weighs
+        total_cost=cn.sum()+ce.sum()
+        cn=cn/total_cost #/max
+        ce=ce/total_cost
+        edgeInsDel=ce[-1]
+        '''
+
+        # Initialization of the node costs
+        node_costs = torch.zeros((self.nb_labels, self.nb_labels), device=self.device)
+        upper_part = torch.triu_indices(node_costs.shape[0], node_costs.shape[1], offset=1, device=self.device)
+        node_costs[upper_part[0], upper_part[1]] = cn[0:-1]
+        node_costs = node_costs + node_costs.T
+
+        if self.nb_edge_labels > 1:
+            edge_costs = torch.zeros((self.nb_edge_labels, self.nb_edge_labels), device=self.device)
+            upper_part = torch.triu_indices(edge_costs.shape[0], edge_costs.shape[1], offset=1, device=self.device)
+            edge_costs[upper_part[0], upper_part[1]] = ce[0:-1]
+            edge_costs = edge_costs + edge_costs.T
+            del upper_part
+            torch.cuda.empty_cache()
+        else:
+            edge_costs = torch.zeros(0, device=self.device)
+
+        return node_costs, cn[-1], edge_costs, edgeInsDel
+
 
     def from_weighs_to_costs(self):
         relu = torch.nn.ReLU()
@@ -229,7 +253,7 @@ class Net(nn.Module):
 
     def lsape_populate_instance(self, first_graph, second_graph, average_node_cost, average_edge_cost, alpha,
                                 lbda):  # ring_g, ring_h come from global ring with all graphs in so ring_g = rings['g'] and ring_h = rings['h']
-        g, h = Gs[first_graph], Gs[second_graph]
+        g, h = self.GraphList[first_graph], self.GraphList[second_graph]
         self.average_cost = [average_node_cost, average_edge_cost]
         self.first_graph, self.second_graph = first_graph, second_graph
 
@@ -290,4 +314,4 @@ class Net(nn.Module):
         return Sk
 
 
-
+# The class Net representing the neural network :

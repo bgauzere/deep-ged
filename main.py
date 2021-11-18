@@ -2,12 +2,14 @@ from data_manager.label_manager import *
 from gklearn.utils.graphfiles import loadDataset
 import torch
 import GPUtil
-from layers.layer import Net, GedLayer
+from layers.layer import Net
+from layers.GedLayer import GedLayer
 import matplotlib.pyplot as plt
 import matplotlib
 from graph_torch.ged_torch import build_node_dictionnary
 matplotlib.use('TkAgg')
-from training.train import classification, GEDclassification
+from training.train import classification
+from training.gedtrain import GEDclassification
 import pickle as pkl
 # Loading the dataset :
 
@@ -21,19 +23,20 @@ print("Length of Gs = ", len(Gs))
 for g in Gs:
     compute_extended_labels(g)
 
-rings_andor_fw = "sans_rings_avec_fw"
+rings_andor_fw = "rings_sans_fw"
 
 device = 'cpu'
 # node_dict, nb_edge_labels = build_node_dictionnary(Gs, "extended_label", "bond_type")
 # model = GedLayer(rings_andor_fw, node_label='extended_label', node_label_dict=node_dict, nb_edge_label=nb_edge_labels)
-model = Net(Gs,normalize=True,node_label='extended_label')
+# model = Net(Gs,normalize=True,node_label='extended_label')
+model = GedLayer(Gs, rings_andor_fw, normalize=True,node_label='extended_label')
 model.to(device)
 
 
 print(len(Gs))
 nb_iter=100
 
-InsDel, nodeSub,edgeSub,loss_plt,loss_valid_plt,loss_train_plt=classification(model,Gs,nb_iter, device, y, rings_andor_fw)
+InsDel, nodeSub,edgeSub,loss_plt,loss_valid_plt,loss_train_plt=GEDclassification(model,Gs,nb_iter, device, y, rings_andor_fw)
 
 # Plotting Node/Edge insertion/deletion costs
 plt.figure(0)

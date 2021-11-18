@@ -6,9 +6,8 @@ import pickle as pkl
 from tqdm import tqdm
 import training.plot
 
-
-def classification(model, Gs, nb_iter, device, y, rings_andor_fw):
-    trainloader, validationloader, test_loader= splitting(Gs, y, saving_path = rings_andor_fw, already_divided=True)
+def GEDclassification(model, Gs, nb_iter, device, y, rings_andor_fw):
+    trainloader, validationloader, test_loader = splitting(Gs, y, saving_path=rings_andor_fw, already_divided=True)
     criterion = torch.nn.HingeEmbeddingLoss(margin=1.0, reduction='mean')
     criterionTri = triangular_constraint()
     optimizer = torch.optim.Adam(model.parameters())  # , lr=1e-3
@@ -24,24 +23,26 @@ def classification(model, Gs, nb_iter, device, y, rings_andor_fw):
     iter_min_valid_loss = 0
 
     for t in range(nb_iter):
-        # print(t, torch.cuda.memory_allocated())
         train_loss = 0.0
         valid_loss = 0.0
         tmp = np.inf
 
         # The training part :
         for train_data, train_labels in trainloader:
+            ged_pred = torch.zeros(len(train_data))
             # print(t, torch.cuda.memory_allocated())
             # Zero gradients, perform a backward pass, and update the weights.
             optimizer.zero_grad()
             # inputt=train_data.to(device)
 
             # Forward pass: Compute predicted y by passing data to the model
-            y_pred = model(train_data).to(device)
+            for k in tqdm(range(len(train_data))):
+                # print(train_data[k])
+                ged_pred[k] = model((train_data[k][0], train_data[k][1])).to(device)
 
             # Computing and printing loss
             train_labels = train_labels.to(device)
-            loss = criterion(y_pred, train_labels).to(device)
+            loss = criterion(ged_pred, train_labels).to(device)
             node_costs, nodeInsDel, edge_costs, edgeInsDel = model.from_weighs_to_costs()
             triangularInq = criterionTri(node_costs, nodeInsDel, edge_costs, edgeInsDel)
             loss = loss * (1 + triangularInq)
@@ -65,14 +66,14 @@ def classification(model, Gs, nb_iter, device, y, rings_andor_fw):
             edgeInsDelInit = edgeInsDel
             nodeSubInit = node_costs
             edgeSubInit = edge_costs
-            torch.save(nodeInsDelInit, 'pickle_files/'+rings_andor_fw+'/nodeInsDelInit', pickle_module=pkl)
-            torch.save(edgeInsDelInit, 'pickle_files/'+rings_andor_fw+'/edgeInsDelInit', pickle_module=pkl)
-            torch.save(nodeSubInit, 'pickle_files/'+rings_andor_fw+'/nodeSubInit', pickle_module=pkl)
-            torch.save(edgeSubInit, 'pickle_files/'+rings_andor_fw+'/edgeSubInit', pickle_module=pkl)
+            torch.save(nodeInsDelInit, 'pickle_files/' + rings_andor_fw + '/nodeInsDelInit', pickle_module=pkl)
+            torch.save(edgeInsDelInit, 'pickle_files/' + rings_andor_fw + '/edgeInsDelInit', pickle_module=pkl)
+            torch.save(nodeSubInit, 'pickle_files/' + rings_andor_fw + '/nodeSubInit', pickle_module=pkl)
+            torch.save(edgeSubInit, 'pickle_files/' + rings_andor_fw + '/edgeSubInit', pickle_module=pkl)
 
             # Getting some information every 100 iterations, to follow the evolution
         if t % 100 == 99 or t == 0:
-            print('Distances: ', y_pred)
+            print('Distances: ', ged_pred)
             print('Loss Triangular:', triangularInq.item())
             print('node_costs : \n', node_costs)
             print('nodeInsDel:', nodeInsDel.item())
@@ -82,16 +83,21 @@ def classification(model, Gs, nb_iter, device, y, rings_andor_fw):
         print(f'Iteration {t + 1} \t\t Training Loss: {train_loss / len(trainloader)}')
 
         # We delete to liberate some memory
-        del y_pred, train_loss, loss
+        del ged_pred, train_loss, loss
         torch.cuda.empty_cache()
 
         # The validation part :
         for valid_data, valid_labels in validationloader:
-            inputt = valid_data.to(device)
-            y_pred = model(inputt).to(device)
+            # inputt = valid_data.to(device)
+            ged_pred = torch.zeros(len(valid_data))
+            for k in tqdm(range(len(valid_data))):
+                # print(train_data[k])
+                ged_pred[k] = model((valid_data[k][0], valid_data[k][1])).to(device)
+
+            # y_pred = model(inputt).to(device)
             # Compute and print loss
             valid_labels = valid_labels.to(device)
-            loss = criterion(y_pred, valid_labels).to(device)
+            loss = criterion(ged_pred, valid_labels).to(device)
             loss.to(device)
             print('loss.item of the valid = ', t, loss.item())
             valid_loss = valid_loss + loss.item()  # * valid_data.size(0)
@@ -135,8 +141,8 @@ def classification(model, Gs, nb_iter, device, y, rings_andor_fw):
     print(' Min cost for nodeSub = ', nodeSub_min)
     print(' Min cost for edgeSub = ', edgeSub_min)
     # Saving the minimum costs into pickle files
-    torch.save(nodeInsDel_min, 'pickle_files/'+rings_andor_fw+'/nodeInsDel_min', pickle_module=pkl)
-    torch.save(edgeInsDel_min, 'pickle_files/'+rings_andor_fw+'/edgeInsDel_min', pickle_module=pkl)
-    torch.save(nodeSub_min, 'pickle_files/'+rings_andor_fw+'/nodeSub_min', pickle_module=pkl)
-    torch.save(edgeSub_min, 'pickle_files/'+rings_andor_fw+'/edgeSub_min', pickle_module=pkl)
+    torch.save(nodeInsDel_min, 'pickle_files/' + rings_andor_fw + '/nodeInsDel_min', pickle_module=pkl)
+    torch.save(edgeInsDel_min, 'pickle_files/' + rings_andor_fw + '/edgeInsDel_min', pickle_module=pkl)
+    torch.save(nodeSub_min, 'pickle_files/' + rings_andor_fw + '/nodeSub_min', pickle_module=pkl)
+    torch.save(edgeSub_min, 'pickle_files/' + rings_andor_fw + '/edgeSub_min', pickle_module=pkl)
     return InsDel, nodeSub, edgeSub, loss_plt, loss_valid_plt, loss_train_plt
