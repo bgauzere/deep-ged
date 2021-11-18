@@ -8,7 +8,9 @@
 - GPUtil : pip install GPUtil
 - torch : pip install torch
 - networkx : pip install networkx
-         
+# Config
+ * export MAO_DATASET_PATH=/path/to/dataset.ds
+
 **DeepGraphWithNNTorch.ipynb :**
 Lance le modèle sur MAO, apprend en 150 itérations et plot les différentes losses.
 Produits des fichiers pickle intermédiaires (tous conservés dans le répertoire pickle_files) :
@@ -75,3 +77,6 @@ Fichiers {#fichiers .unnumbered}
     dessus) et une autre classe qui ne considère qu'un coût de
     substitution qui est multiplié à la distance euclidienne entre les
     plongements de noeuds.
+
+# Tests
+ Pour lancer les tests, installer pytest et faire python -m pytest depuis la racine

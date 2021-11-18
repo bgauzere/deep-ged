@@ -1,5 +1,6 @@
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.neighbors import KNeighborsClassifier
+import os
 import pickle as pkl
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,7 +12,9 @@ import networkx as nx
 import matplotlib
 matplotlib.use('TkAgg')
 
- # extraction of all atom labels 
+# extraction of all atom labels
+
+
 def build_node_dictionnary(GraphList):
     node_label = 'label'
     node_labels = []
@@ -27,22 +30,28 @@ def build_node_dictionnary(GraphList):
         dict[label] = k
         k = k+1
 
-    return dict,max(max([[int(G[e[0]][e[1]]['bond_type']) for e in G.edges()] for G in GraphList]))
+    return dict, max(max([[int(G[e[0]][e[1]]['bond_type']) for e in G.edges()] for G in GraphList]))
 
 # Transforming a networkx to a torch tensor
-def from_networkx_to_tensor(G,dict):    
-    A_g = torch.tensor(nx.to_scipy_sparse_matrix(G,dtype=int,weight='bond_type').todense(),dtype=torch.int)        
+
+
+def from_networkx_to_tensor(G, dict):
+    A_g = torch.tensor(nx.to_scipy_sparse_matrix(
+        G, dtype=int, weight='bond_type').todense(), dtype=torch.int)
     lab = [dict[G.nodes[v]['label'][0]] for v in nx.nodes(G)]
 
-    return A_g.view(1,A_g.shape[0]*A_g.shape[1]),torch.tensor(lab)
+    return A_g.view(1, A_g.shape[0]*A_g.shape[1]), torch.tensor(lab)
 
-def init_dataset(Gs,dict):
+
+def init_dataset(Gs, dict):
     for k in range(len(Gs)):
-        A_k,l = from_networkx_to_tensor(Gs[k],dict)   #adjacency matrixes          
-        A[k,0:A_k.shape[1]]=A_k[0]
-        labels[k,0:l.shape[0]]=l
+        A_k, l = from_networkx_to_tensor(Gs[k], dict)  # adjacency matrixes
+        A[k, 0:A_k.shape[1]] = A_k[0]
+        labels[k, 0:l.shape[0]] = l
 
 # This function is used to construct a cost matrix C between two graphs g1 and g2, given the costs
+
+
 def construct_cost_matrix(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel):
     n = card[g1].item()
     m = card[g2].item()
@@ -51,7 +60,7 @@ def construct_cost_matrix(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel
     A1[0:n, 0:n] = A[g1][0:n*n].view(n, n)
     A2 = torch.zeros((m+1, m+1), dtype=torch.int, device=device)
     A2[0:m, 0:m] = A[g2][0:m*m].view(m, m)
-   
+
     C = edgeInsDel*matrix_edgeInsDel(A1, A2)
     if nb_edge_labels > 1:
         for k in range(nb_edge_labels):
@@ -84,13 +93,17 @@ def matrix_edgeInsDel(A1, A2):
 
 
 def matrix_edgeSubst(A1, A2, lab1, lab2):
-    Abin1 = (A1 == lab1*torch.ones((A1.shape[0], A1.shape[1]), device=device)).int()
-    Abin2 = (A2 == lab2*torch.ones((A2.shape[0], A2.shape[1]), device=device)).int()
+    Abin1 = (
+        A1 == lab1*torch.ones((A1.shape[0], A1.shape[1]), device=device)).int()
+    Abin2 = (
+        A2 == lab2*torch.ones((A2.shape[0], A2.shape[1]), device=device)).int()
     C = torch.einsum('ij,kl->ijkl', Abin1, Abin2)
 
     return torch.cat(torch.unbind(torch.cat(torch.unbind(C, 1), 1), 0), 1)
 
 # ring_g, ring_h come from global ring with all graphs in so ring_g = rings['g'] and ring_h = rings['h']
+
+
 def lsape_populate_instance(first_graph, second_graph, average_node_cost, average_edge_cost, alpha, lbda, node_costs, nodeInsDel, edge_costs, edgeInsDel, ring_g, ring_h):
     g, h = Gs[first_graph], Gs[second_graph]
     lsape_instance = [[0 for _ in range(len(g) + 1)]
@@ -105,10 +118,13 @@ def lsape_populate_instance(first_graph, second_graph, average_node_cost, averag
     return lsape_instance
 
 # Finding an adequate mapping based on the given costs, without using the Frank Wolfe method
+
+
 def mapping_from_cost_sans_FW(n, m, g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel, ring_g, ring_h):
     c_0 = lsape_populate_instance(g1, g2, node_costs, edge_costs, nodeInsDel,
                                   edgeInsDel, node_costs, nodeInsDel, edge_costs, edgeInsDel, ring_g, ring_h)
-    x0 = svd.eps_assigment_from_mapping(torch.exp(-c_0), 10).view((n+1)*(m+1), 1)
+    x0 = svd.eps_assigment_from_mapping(
+        torch.exp(-c_0), 10).view((n+1)*(m+1), 1)
     return x0
 
 # Finding an adequate mapping based on the given costs, using the Frank Wolfe method, and the rings
@@ -261,7 +277,8 @@ if __name__ == "__main__":
     # device = 'cuda' if torch.cuda.is_available() else 'cpu'
     rings_andor_fw = 'sans_rings_avec_fw'
     device = 'cpu'
-    Gs, y = loadDataset('DeepGED/MAO/dataset.ds')
+    path_dataset = os.getenv('MAO_DATASET_PATH')
+    Gs, y = loadDataset(path_dataset)
     card = torch.tensor([G.order() for G in Gs]).to(device)
     card_max = card.max()
     A = torch.empty((len(Gs), card_max*card_max), dtype=torch.int, device=device)

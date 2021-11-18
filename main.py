@@ -1,3 +1,7 @@
+import os
+import pickle as pkl
+from training.gedtrain import GEDclassification
+from training.train import classification
 from data_manager.label_manager import *
 from gklearn.utils.graphfiles import loadDataset
 import torch
@@ -8,12 +12,10 @@ import matplotlib.pyplot as plt
 import matplotlib
 from graph_torch.ged_torch import build_node_dictionnary
 matplotlib.use('TkAgg')
-from training.train import classification
-from training.gedtrain import GEDclassification
-import pickle as pkl
 # Loading the dataset :
 
-Gs, y = loadDataset('DeepGED/MAO/dataset.ds')
+path_dataset = os.getenv('MAO_DATASET_PATH')
+Gs, y = loadDataset(path_dataset)
 # Getting the GPU status :
 GPUtil.showUtilization()
 
@@ -29,19 +31,21 @@ device = 'cpu'
 # node_dict, nb_edge_labels = build_node_dictionnary(Gs, "extended_label", "bond_type")
 # model = GedLayer(rings_andor_fw, node_label='extended_label', node_label_dict=node_dict, nb_edge_label=nb_edge_labels)
 # model = Net(Gs,normalize=True,node_label='extended_label')
-model = GedLayer(Gs, rings_andor_fw, normalize=True,node_label='extended_label')
+model = GedLayer(Gs, rings_andor_fw, normalize=True,
+                 node_label='extended_label')
 model.to(device)
 
 
 print(len(Gs))
-nb_iter=100
+nb_iter = 100
 
-InsDel, nodeSub,edgeSub,loss_plt,loss_valid_plt,loss_train_plt=GEDclassification(model,Gs,nb_iter, device, y, rings_andor_fw)
+InsDel, nodeSub, edgeSub, loss_plt, loss_valid_plt, loss_train_plt = GEDclassification(
+    model, Gs, nb_iter, device, y, rings_andor_fw)
 
 # Plotting Node/Edge insertion/deletion costs
 plt.figure(0)
-plt.plot(InsDel[0:nb_iter,0],label="node")
-plt.plot(InsDel[0:nb_iter,1],label="edge")
+plt.plot(InsDel[0:nb_iter, 0], label="node")
+plt.plot(InsDel[0:nb_iter, 1], label="edge")
 plt.title('Node/Edge insertion/deletion costs')
 plt.legend()
 

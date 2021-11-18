@@ -10,22 +10,27 @@ import sys
 
 class GedLayer(nn.Module):
     def __init__(self, GraphList, rings_andor_fw, normalize=False, node_label="label"):
+
         super(GedLayer, self).__init__()
+
         self.GraphList = GraphList
         self.normalize = normalize
         self.node_label = node_label
         self.rings_andor_fw = rings_andor_fw
+
         dict, self.nb_edge_labels = self.build_node_dictionnary(GraphList)
         self.nb_labels = len(dict)
         print(self.nb_edge_labels)
-        # self.device=torch.device("cuda:0")
         self.device = torch.device('cpu')
         nb_node_pair_label = int(self.nb_labels * (self.nb_labels - 1) / 2.0)
-        nb_edge_pair_label = int(self.nb_edge_labels * (self.nb_edge_labels - 1) / 2)
+        nb_edge_pair_label = int(
+            self.nb_edge_labels * (self.nb_edge_labels - 1) / 2)
 
-        nweighs = (1e-2) * (1.0 + 1e-1 * np.random.rand(int(self.nb_labels * (self.nb_labels - 1) / 2 + 1)))
+        nweighs = (1e-2) * (1.0 + 1e-1 *
+                            np.random.rand(int(self.nb_labels * (self.nb_labels - 1) / 2 + 1)))
         nweighs[-1] = 3.0e-2
-        eweighs = (1e-2) * (1.0 + 1e-1 * np.random.rand(nb_edge_pair_label + 1))
+        eweighs = (1e-2) * (1.0 + 1e-1 *
+                            np.random.rand(nb_edge_pair_label + 1))
         eweighs[-1] = 2.0e-2
         # #
         # nweighs = (1e-1) * (1.0 + 1e0 * np.random.rand(int(self.nb_labels * (self.nb_labels - 1) / 2 + 1)))
@@ -38,13 +43,18 @@ class GedLayer(nn.Module):
         # eweighs = (1e0) * (1.0 + 1e1 * np.random.rand(nb_edge_pair_label + 1))
         # eweighs[-1] = 2.0e0
 
-        self.node_weighs = nn.Parameter(torch.tensor(nweighs, requires_grad=True, dtype=torch.float, device=self.device))
-        self.edge_weighs = nn.Parameter(torch.tensor(eweighs, requires_grad=True, dtype=torch.float, device=self.device))
+        self.node_weighs = nn.Parameter(torch.tensor(
+            nweighs, requires_grad=True, dtype=torch.float, device=self.device))
+        self.edge_weighs = nn.Parameter(torch.tensor(
+            eweighs, requires_grad=True, dtype=torch.float, device=self.device))
 
-        self.card = torch.tensor([G.order() for G in GraphList]).to(self.device)
+        self.card = torch.tensor([G.order()
+                                 for G in GraphList]).to(self.device)
         card_max = self.card.max()
-        self.A = torch.empty((len(GraphList), card_max * card_max), dtype=torch.int, device=self.device)
-        self.labels = torch.empty((len(GraphList), card_max), dtype=torch.int, device=self.device)
+        self.A = torch.empty(
+            (len(GraphList), card_max * card_max), dtype=torch.int, device=self.device)
+        self.labels = torch.empty(
+            (len(GraphList), card_max), dtype=torch.int, device=self.device)
         print(self.A.shape)
         for k in range(len(GraphList)):
             A, l = self.from_networkx_to_tensor(GraphList[k], dict)
@@ -54,8 +64,10 @@ class GedLayer(nn.Module):
         print('node labels', self.labels)
         print('order of the graphs', self.card)
 
-
     def forward(self, input):
+        '''
+        input sont les index (int) de deux graphes à comparer
+        '''
         g1 = input[0]
         g2 = input[1]
 
@@ -69,21 +81,27 @@ class GedLayer(nn.Module):
         D = C - torch.eye(C.shape[0], device=self.device) * c
 
         if self.rings_andor_fw == 'rings_sans_fw':
-            self.ring_g,self.ring_h = rings.build_rings(g1,cedl.size()), rings.build_rings(g2,cedl.size())
-            c_0=self.lsape_populate_instance(g1,g2,cns,ces,cndl,cedl)
+            self.ring_g, self.ring_h = rings.build_rings(
+                g1, cedl.size()), rings.build_rings(g2, cedl.size())
+            c_0 = self.lsape_populate_instance(g1, g2, cns, ces, cndl, cedl)
             print(C.shape, c_0.shape)
-            S = svd.eps_assign2(torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+            S = svd.eps_assign2(
+                torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
         elif self.rings_andor_fw == 'rings_avec_fw':
-            self.ring_g,self.ring_h = rings.build_rings(g1,cedl.size()), rings.build_rings(g2,cedl.size())
-            c_0=self.lsape_populate_instance(g1,g2,cns,ces,cndl,cedl)
+            self.ring_g, self.ring_h = rings.build_rings(
+                g1, cedl.size()), rings.build_rings(g2, cedl.size())
+            c_0 = self.lsape_populate_instance(g1, g2, cns, ces, cndl, cedl)
             print(C.shape, c_0.shape)
-            x0 = svd.eps_assign2(torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+            x0 = svd.eps_assign2(
+                torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
             S = svd.franck_wolfe(x0, D, c, 5, 10, n, m)
         elif self.rings_andor_fw == 'sans_rings_avec_fw':
-            x0 = svd.eps_assign2(torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+            x0 = svd.eps_assign2(
+                torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
             S = svd.franck_wolfe(x0, D, c, 5, 10, n, m)
         elif self.rings_andor_fw == 'sans_rings_sans_fw':
-            S = svd.eps_assign2(torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+            S = svd.eps_assign2(
+                torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
         else:
             print("Error : rings_andor_fw => value not understood")
             sys.exit()
@@ -115,14 +133,18 @@ class GedLayer(nn.Module):
         '''
 
         # Initialization of the node costs
-        node_costs = torch.zeros((self.nb_labels, self.nb_labels), device=self.device)
-        upper_part = torch.triu_indices(node_costs.shape[0], node_costs.shape[1], offset=1, device=self.device)
+        node_costs = torch.zeros(
+            (self.nb_labels, self.nb_labels), device=self.device)
+        upper_part = torch.triu_indices(
+            node_costs.shape[0], node_costs.shape[1], offset=1, device=self.device)
         node_costs[upper_part[0], upper_part[1]] = cn[0:-1]
         node_costs = node_costs + node_costs.T
 
         if self.nb_edge_labels > 1:
-            edge_costs = torch.zeros((self.nb_edge_labels, self.nb_edge_labels), device=self.device)
-            upper_part = torch.triu_indices(edge_costs.shape[0], edge_costs.shape[1], offset=1, device=self.device)
+            edge_costs = torch.zeros(
+                (self.nb_edge_labels, self.nb_edge_labels), device=self.device)
+            upper_part = torch.triu_indices(
+                edge_costs.shape[0], edge_costs.shape[1], offset=1, device=self.device)
             edge_costs[upper_part[0], upper_part[1]] = ce[0:-1]
             edge_costs = edge_costs + edge_costs.T
             del upper_part
@@ -163,6 +185,12 @@ class GedLayer(nn.Module):
         return node_costs, cn[-1], edge_costs, edgeInsDel
 
     def build_node_dictionnary(self, GraphList):
+        """
+        Graphlist : liste de graphes networkx
+
+        retourne l'ensemble des labels de l'ensemble des graphes dans Graphlist
+        Les lables sont ceux dont la clé est self.node_label
+        """
         # extraction de tous les labels d'atomes
         node_labels = []
         for G in GraphList:

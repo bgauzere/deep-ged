@@ -4,8 +4,12 @@ from layers.layer import Net
 from gklearn.utils.graphfiles import loadDataset
 import torch
 from graph_torch import ged_torch
+import os
 
-Gs, y = loadDataset('../DeepGED/MAO/dataset.ds')
+
+path_dataset = os.getenv('MAO_DATASET_PATH')
+Gs, y = loadDataset(path_dataset)
+
 for g in Gs:
     compute_extended_labels(g)
 
