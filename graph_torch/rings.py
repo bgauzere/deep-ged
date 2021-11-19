@@ -3,7 +3,9 @@ from gklearn.utils.graphfiles import loadDataset
 import torch
 import os
 
-path_dataset = os.getenv('MAO_DATASET_PATH')
+dataset_path = os.getenv('MAO_DATASET_PATH')
+Gs, y = loadDataset(dataset_path)
+
 
 
 # Gs,y = loadDataset('DeepGED/Acyclic/dataset_bps.ds')
@@ -98,7 +100,8 @@ def lsape_multiset_cost(layer_g, layer_h, attribute, node_costs, nodeInsDel, edg
             if attribute == 0:
                 current_label = Gs[first_graph].nodes[node]['label'][0]
             else:
-                current_label = Gs[first_graph].get_edge_data(node[0], node[1]).get(0)
+                current_label = Gs[first_graph].get_edge_data(
+                    node[0], node[1]).get(0)
             if current_label not in labels_layer1:
                 labels_layer1[current_label] = 1
             else:
@@ -107,7 +110,8 @@ def lsape_multiset_cost(layer_g, layer_h, attribute, node_costs, nodeInsDel, edg
             if attribute == 0:
                 current_label = Gs[second_graph].nodes[node]['label'][0]
             else:
-                current_label = Gs[second_graph].get_edge_data(node[0], node[1]).get(0)
+                current_label = Gs[second_graph].get_edge_data(
+                    node[0], node[1]).get(0)
                 # current_label = Gs[second_graph].get_edge_data(node[0],node[1])[self.label_names['edge_labels'][0]]
             if current_label not in labels_layer2:
                 labels_layer2[current_label] = 1
@@ -117,8 +121,10 @@ def lsape_multiset_cost(layer_g, layer_h, attribute, node_costs, nodeInsDel, edg
         lvg_inter_lvh_cardinal = 0
         for label in labels_layer1:
             if label in labels_layer2:
-                lvg_inter_lvh_cardinal += min(labels_layer1[label], labels_layer2[label])
-        cost += average_cost_subst * (min(len(layer2), len(layer1)) - lvg_inter_lvh_cardinal)
+                lvg_inter_lvh_cardinal += min(
+                    labels_layer1[label], labels_layer2[label])
+        cost += average_cost_subst * \
+            (min(len(layer2), len(layer1)) - lvg_inter_lvh_cardinal)
     if not layer2:
         return average_cost_InsDel * len(layer1)
     if not layer1:

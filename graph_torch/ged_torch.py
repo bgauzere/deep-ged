@@ -4,7 +4,9 @@ import svd
 from gklearn.utils.graphfiles import loadDataset
 import networkx as nx
 
-Gs, y = loadDataset('DeepGED/MAO/dataset.ds')
+import os
+dataset_path = os.getenv('MAO_DATASET_PATH')
+Gs, y = loadDataset(dataset_path)
 
 
 def from_weighs_to_costs(self):
@@ -28,14 +30,18 @@ def from_weighs_to_costs(self):
     '''
 
     # Initialization of the node costs
-    node_costs = torch.zeros((self.nb_labels, self.nb_labels), device=self.device)
-    upper_part = torch.triu_indices(node_costs.shape[0], node_costs.shape[1], offset=1, device=self.device)
+    node_costs = torch.zeros(
+        (self.nb_labels, self.nb_labels), device=self.device)
+    upper_part = torch.triu_indices(
+        node_costs.shape[0], node_costs.shape[1], offset=1, device=self.device)
     node_costs[upper_part[0], upper_part[1]] = cn[0:-1]
     node_costs = node_costs + node_costs.T
 
     if self.nb_edge_labels > 1:
-        edge_costs = torch.zeros((self.nb_edge_labels, self.nb_edge_labels), device=self.device)
-        upper_part = torch.triu_indices(edge_costs.shape[0], edge_costs.shape[1], offset=1, device=self.device)
+        edge_costs = torch.zeros(
+            (self.nb_edge_labels, self.nb_edge_labels), device=self.device)
+        upper_part = torch.triu_indices(
+            edge_costs.shape[0], edge_costs.shape[1], offset=1, device=self.device)
         edge_costs[upper_part[0], upper_part[1]] = ce[0:-1]
         edge_costs = edge_costs + edge_costs.T
         del upper_part
@@ -67,7 +73,8 @@ def build_node_dictionnary(GraphList, node_label, edge_label):
 
 # Transforming a networkx to a torch tensor
 def from_networkx_to_tensor(G, dict, node_label):
-    A = torch.tensor(nx.to_scipy_sparse_matrix(G, dtype=int, weight='bond_type').todense(), dtype=torch.int)
+    A = torch.tensor(nx.to_scipy_sparse_matrix(
+        G, dtype=int, weight='bond_type').todense(), dtype=torch.int)
     lab = [dict[G.nodes[v][node_label][0]] for v in nx.nodes(G)]
 
     return (A.view(1, A.shape[0] * A.shape[1]), torch.tensor(lab))
@@ -90,9 +97,10 @@ def construct_cost_matrix(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel
         for k in range(nb_edge_labels):
             for l in range(nb_edge_labels):
                 if k != l:
-                    C.add_(matrix_edgeSubst(A1, A2, k + 1, l + 1).multiply_(edge_costs[k][l]))
-                    C = C + edge_costs[k][l] * matrix_edgeSubst(A1, A2, k + 1, l + 1)
-
+                    C.add_(matrix_edgeSubst(A1, A2, k + 1,
+                           l + 1).multiply_(edge_costs[k][l]))
+                    C = C + edge_costs[k][l] * \
+                        matrix_edgeSubst(A1, A2, k + 1, l + 1)
 
     D = torch.zeros((n + 1) * (m + 1))
     D[n * (m + 1):] = nodeInsDel
@@ -105,6 +113,7 @@ def construct_cost_matrix(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel
     C = mask * torch.diag(D)  # + (1. - mask)*C
 
     return C
+
 
 def matrix_edgeInsDel(A1, A2):
     Abin1 = (A1 != torch.zeros((A1.shape[0], A1.shape[1])))
