@@ -125,7 +125,8 @@ class GedLayer(nn.Module):
 
     def from_weighs_to_costs(self):
         """
-        A quoi ça sert ? Pourquoi deux fois la meme fonction ?
+        A quoi ça sert ? Pourquoi deux fois la meme fonction?
+        un seul cout de suppresion/insertion
         """
         # We apply the ReLU (rectified linear unit) function element-wise
         relu = torch.nn.ReLU()
@@ -163,39 +164,6 @@ class GedLayer(nn.Module):
             edge_costs = edge_costs + edge_costs.T
             del upper_part
             torch.cuda.empty_cache()
-        else:
-            edge_costs = torch.zeros(0, device=self.device)
-
-        return node_costs, cn[-1], edge_costs, edgeInsDel
-
-    def from_weighs_to_costs(self):
-        relu = torch.nn.ReLU()
-        # cn=torch.exp(self.node_weighs)
-        # ce=torch.exp(self.edge_weighs)
-        # cn=self.node_weighs*self.node_weighs
-        # ce=self.edge_weighs*self.edge_weighs
-        cn = relu(self.node_weighs)
-        ce = relu(self.edge_weighs)
-
-        # total_cost=cn.sum()+ce.sum()
-        # cn=cn/total_cost
-        # ce=ce/total_cost
-        edgeInsDel = ce[-1]
-
-        node_costs = torch.zeros(
-            (self.nb_labels, self.nb_labels), device=self.device)
-        upper_part = torch.triu_indices(
-            node_costs.shape[0], node_costs.shape[1], offset=1, device=self.device)
-        node_costs[upper_part[0], upper_part[1]] = cn[0:-1]
-        node_costs = node_costs + node_costs.T
-
-        if self.nb_edge_labels > 1:
-            edge_costs = torch.zeros(
-                (self.nb_edge_labels, self.nb_edge_labels), device=self.device)
-            upper_part = torch.triu_indices(
-                edge_costs.shape[0], edge_costs.shape[1], offset=1, device=self.device)
-            edge_costs[upper_part[0], upper_part[1]] = ce[0:-1]
-            edge_costs = edge_costs + edge_costs.T
         else:
             edge_costs = torch.zeros(0, device=self.device)
 
