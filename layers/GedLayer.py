@@ -9,7 +9,8 @@ import sys
 
 
 class GedLayer(nn.Module):
-    def __init__(self, GraphList, rings_andor_fw, normalize=False, node_label="label",
+    def __init__(self, GraphList, rings_andor_fw='sans_rings_sans_fw',
+                 normalize=False, node_label="label",
                  verbose=True):
 
         super(GedLayer, self).__init__()
