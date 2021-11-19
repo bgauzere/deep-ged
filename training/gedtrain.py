@@ -40,6 +40,9 @@ def GEDclassification(model, Gs, nb_iter, device, y, rings_andor_fw):
                 # print(train_data[k])
                 ged_pred[k] = model((train_data[k][0], train_data[k][1])).to(device)
 
+            max = torch.max(ged_pred)
+            min = torch.min(ged_pred)
+            ged_pred = (ged_pred - min) / (max - min)
             # Computing and printing loss
             train_labels = train_labels.to(device)
             loss = criterion(ged_pred, train_labels).to(device)

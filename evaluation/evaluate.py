@@ -1,13 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import svd
+from graph_torch import rings, svd
 from svd import iterated_power as compute_major_axis
 import GPUtil
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.enabled = True
 #torch.autograd.set_detect_anomaly(True)
-import rings
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -25,9 +24,10 @@ matplotlib.use('TkAgg')
 
 
 class Evaluator():
-    def __init__(self, GraphList, normalize=False, node_label='label'):
+    def __init__(self, GraphList, rings_andor_fw, normalize=False, node_label='label'):
         self.normalize = normalize
         self.node_label = node_label
+        self.rings_andor_fw = rings_andor_fw
         dict, self.nb_edge_labels = self.build_node_dictionnary(GraphList)
         self.nb_labels = len(dict)
         print(self.nb_edge_labels)
@@ -58,48 +58,81 @@ class Evaluator():
                 n = self.card[g1]
                 m = self.card[g2]
                 # with torch.no_grad():
+
                 C = self.construct_cost_matrix(g1, g2, cns, ces, cndl, cedl)
+                c = torch.diag(C)
+                D = C - torch.eye(C.shape[0], device=self.device) * c
 
-                # self.ring_g,self.ring_h = rings.build_rings(g1,edgeInsDel.size()), rings.build_rings(g2,edgeInsDel.size())
-                # c_0=self.lsape_populate_instance(g1,g2,node_costs,edge_costs,nodeInsDel,edgeInsDel)
+                if self.rings_andor_fw == 'rings_sans_fw':
+                    self.ring_g, self.ring_h = rings.build_rings(
+                        g1, cedl.size()), rings.build_rings(g2, cedl.size())
+                    c_0 = self.lsape_populate_instance(g1, g2, cns, ces, cndl, cedl)
+                    print(C.shape, c_0.shape)
+                    S = svd.eps_assign2(
+                        torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+                elif self.rings_andor_fw == 'rings_avec_fw':
+                    self.ring_g, self.ring_h = rings.build_rings(
+                        g1, cedl.size()), rings.build_rings(g2, cedl.size())
+                    c_0 = self.lsape_populate_instance(g1, g2, cns, ces, cndl, cedl)
+                    print(C.shape, c_0.shape)
+                    x0 = svd.eps_assign2(
+                        torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+                    S = svd.franck_wolfe(x0, D, c, 5, 10, n, m)
+                elif self.rings_andor_fw == 'sans_rings_avec_fw':
+                    x0 = svd.eps_assign2(
+                        torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+                    S = svd.franck_wolfe(x0, D, c, 5, 10, n, m)
+                elif self.rings_andor_fw == 'sans_rings_sans_fw':
+                    S = svd.eps_assign2(
+                        torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+                else:
+                    print("Error : rings_andor_fw => value not understood")
+                    sys.exit()
 
-                # S=self.mapping_from_similarity(C,n,m)
-                #            print('g1,g2=',g1.item(),g2.item())
-                S = self.mapping_from_cost(C, n, m)
                 v = torch.flatten(S)
-
                 normalize_factor = 1.0
                 if self.normalize:
                     nb_edge1 = (self.A[g1][0:n * n] != torch.zeros(n * n)).int().sum()
                     nb_edge2 = (self.A[g2][0:m * m] != torch.zeros(m * m)).int().sum()
                     normalize_factor = cndl * (n + m) + cedl * (nb_edge1 + nb_edge2)
-                c = torch.diag(C)
-                D = C - torch.eye(C.shape[0], device=self.device) * c
-                ged = (.5 * v.T @ D @ v + c.T @ v) / normalize_factor
+                ged = (.5 * v.T @ D @ v + c.T @ v)/normalize_factor
                 ged_matrix_train[g1, g2] = ged
 
         for g1 in tqdm(range(len(test_data))):
             for g2 in range(len(train_data)):
                 n = self.card[g1]
                 m = self.card[g2]
-                # with torch.no_grad():
                 C = self.construct_cost_matrix(g1, g2, cns, ces, cndl, cedl)
-
-                # self.ring_g,self.ring_h = rings.build_rings(g1,edgeInsDel.size()), rings.build_rings(g2,edgeInsDel.size())
-                # c_0=self.lsape_populate_instance(g1,g2,node_costs,edge_costs,nodeInsDel,edgeInsDel)
-
-                # S=self.mapping_from_similarity(C,n,m)
-                #            print('g1,g2=',g1.item(),g2.item())
-                S = self.mapping_from_cost(C, n, m)
-                v = torch.flatten(S)
-
-                normalize_factor = 1.0
-                if self.normalize:
-                    nb_edge1 = (self.A[g1][0:n * n] != torch.zeros(n * n)).int().sum()
-                    nb_edge2 = (self.A[g2][0:m * m] != torch.zeros(m * m)).int().sum()
-                    normalize_factor = cndl * (n + m) + cedl * (nb_edge1 + nb_edge2)
                 c = torch.diag(C)
                 D = C - torch.eye(C.shape[0], device=self.device) * c
+
+                if self.rings_andor_fw == 'rings_sans_fw':
+                    self.ring_g, self.ring_h = rings.build_rings(
+                        g1, cedl.size()), rings.build_rings(g2, cedl.size())
+                    c_0 = self.lsape_populate_instance(g1, g2, cns, ces, cndl, cedl)
+                    print(C.shape, c_0.shape)
+                    S = svd.eps_assign2(
+                        torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+                elif self.rings_andor_fw == 'rings_avec_fw':
+                    self.ring_g, self.ring_h = rings.build_rings(
+                        g1, cedl.size()), rings.build_rings(g2, cedl.size())
+                    c_0 = self.lsape_populate_instance(g1, g2, cns, ces, cndl, cedl)
+                    print(C.shape, c_0.shape)
+                    x0 = svd.eps_assign2(
+                        torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+                    S = svd.franck_wolfe(x0, D, c, 5, 10, n, m)
+                elif self.rings_andor_fw == 'sans_rings_avec_fw':
+                    x0 = svd.eps_assign2(
+                        torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+                    S = svd.franck_wolfe(x0, D, c, 5, 10, n, m)
+                elif self.rings_andor_fw == 'sans_rings_sans_fw':
+                    S = svd.eps_assign2(
+                        torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+                else:
+                    print("Error : rings_andor_fw => value not understood")
+                    sys.exit()
+
+                v = torch.flatten(S)
                 ged = (.5 * v.T @ D @ v + c.T @ v) / normalize_factor
                 ged_matrix_test[g1, g2] = ged
 
@@ -117,48 +150,6 @@ class Evaluator():
         plt.subplot(122)
         plt.imshow(ged_matrix_test)
         plt.show()
-
-    # def forward(self, input):
-    #     ged = torch.zeros(len(input)).to(self.device)
-    #     node_costs, nodeInsDel, edge_costs, edgeInsDel = self.from_weighs_to_costs()
-    #
-    #     torch.cuda.empty_cache()
-    #     GPUtil.showUtilization(all=True)
-    #
-    #     # print('weighs:',self.weighs.device,'device:',self.device,'card:',self.card.device,'A:',self.A.device,'labels:',self.labels.device)
-    #     for k in tqdm(range(len(input))):
-    #         # print('Dans le forward')
-    #         # GPUtil.showUtilization(all=True)
-    #
-    #         g1 = input[k][0]
-    #         g2 = input[k][1]
-    #         n = self.card[g1]
-    #         m = self.card[g2]
-    #         # with torch.no_grad():
-    #         C = self.construct_cost_matrix(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel)
-    #
-    #         # self.ring_g,self.ring_h = rings.build_rings(g1,edgeInsDel.size()), rings.build_rings(g2,edgeInsDel.size())
-    #         # c_0=self.lsape_populate_instance(g1,g2,node_costs,edge_costs,nodeInsDel,edgeInsDel)
-    #
-    #         # S=self.mapping_from_similarity(C,n,m)
-    #         #            print('g1,g2=',g1.item(),g2.item())
-    #         S = self.mapping_from_cost(C, n, m)
-    #         v = torch.flatten(S)
-    #
-    #         normalize_factor = 1.0
-    #         if self.normalize:
-    #             nb_edge1 = (self.A[g1][0:n * n] != torch.zeros(n * n, device=self.device)).int().sum()
-    #             nb_edge2 = (self.A[g2][0:m * m] != torch.zeros(m * m, device=self.device)).int().sum()
-    #             normalize_factor = nodeInsDel * (n + m) + edgeInsDel * (nb_edge1 + nb_edge2)
-    #         c = torch.diag(C)
-    #         D = C - torch.eye(C.shape[0], device=self.device) * c
-    #         ged[k] = (.5 * v.T @ D @ v + c.T @ v) / normalize_factor
-    #
-    #     max = torch.max(ged)
-    #     min = torch.min(ged)
-    #     ged = (ged - min) / (max - min)
-    #
-    #     return ged
 
     def from_weighs_to_costs(self):
         relu = torch.nn.ReLU()
@@ -353,7 +344,7 @@ if __name__ == "__main__":
 
 
     rings_andor_fw = "sans_rings_avec_fw"
-    weights = "learned"
+    weights = "init"
 
     cns = None
 
@@ -392,7 +383,7 @@ if __name__ == "__main__":
 
     if cndl is not None:
         print(cns)
-        model = Evaluator(Gs, normalize=True, node_label='label')
+        model = Evaluator(Gs, rings_andor_fw, normalize=False, node_label='extended_label')
         model.classification(train_graph, test_graph, train_label, test_label, 5, cns, ces, cndl, cedl)
     else:
         sys.exit("Error : weights are not defined")

@@ -6,7 +6,6 @@ from data_manager.label_manager import *
 from gklearn.utils.graphfiles import loadDataset
 import torch
 import GPUtil
-from layers.layer import Net
 from layers.GedLayer import GedLayer
 import matplotlib.pyplot as plt
 import matplotlib
@@ -15,6 +14,7 @@ matplotlib.use('TkAgg')
 # Loading the dataset :
 
 path_dataset = os.getenv('MAO_DATASET_PATH')
+print(path_dataset)
 Gs, y = loadDataset(path_dataset)
 # Getting the GPU status :
 GPUtil.showUtilization()
@@ -25,7 +25,7 @@ print("Length of Gs = ", len(Gs))
 for g in Gs:
     compute_extended_labels(g)
 
-rings_andor_fw = "rings_sans_fw"
+rings_andor_fw = "sans_rings_sans_fw"
 
 device = 'cpu'
 # node_dict, nb_edge_labels = build_node_dictionnary(Gs, "extended_label", "bond_type")

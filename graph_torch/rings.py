@@ -1,8 +1,9 @@
 
 from gklearn.utils.graphfiles import loadDataset
 import torch
+import os
 
-Gs, y = loadDataset('DeepGED/MAO/dataset.ds')
+path_dataset = os.getenv('MAO_DATASET_PATH')
 
 
 # Gs,y = loadDataset('DeepGED/Acyclic/dataset_bps.ds')

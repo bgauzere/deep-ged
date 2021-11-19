@@ -61,13 +61,13 @@ class GedLayer(nn.Module):
         nb_edge_pair_label = int(
             self.nb_edge_labels * (self.nb_edge_labels - 1) / 2)
 
-        nweighs = (1e-2) * (1.1 *
+        nweighs = (1e-1) * (1.1 *
                             np.random.rand(nb_node_pair_label + 1))
-        nweighs[-1] = .03
+        nweighs[-1] = .3
 
-        eweighs = (1e-2) * (1.1 *
+        eweighs = (1e-1) * (1.1 *
                             np.random.rand(nb_edge_pair_label + 1))
-        eweighs[-1] = .02
+        eweighs[-1] = .2
 
         self.node_weighs = nn.Parameter(torch.tensor(
             nweighs, requires_grad=True, dtype=torch.float, device=self.device))
@@ -116,10 +116,14 @@ class GedLayer(nn.Module):
             print("Error : rings_andor_fw => value not understood")
             sys.exit()
 
+        normalize_factor = 1.0
+        if self.normalize:
+            nb_edge1 = (self.A[g1][0:n * n] != torch.zeros(n * n, device=self.device)).int().sum()
+            nb_edge2 = (self.A[g2][0:m * m] != torch.zeros(m * m, device=self.device)).int().sum()
+            normalize_factor = cndl * (n + m) + cedl * (nb_edge1 + nb_edge2)
+
         v = torch.flatten(S)
-        c = torch.diag(C)
-        D = C - torch.eye(C.shape[0], ) * c
-        ged = (.5 * v.T @ D @ v + c.T @ v)
+        ged = (.5 * v.T @ D @ v + c.T @ v)/normalize_factor
         return ged
 
     def from_weighs_to_costs(self):
