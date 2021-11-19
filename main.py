@@ -10,9 +10,10 @@ from layers.GedLayer import GedLayer
 import matplotlib.pyplot as plt
 import matplotlib
 from graph_torch.ged_torch import build_node_dictionnary
+from utils import from_networkx_to_tensor
 matplotlib.use('TkAgg')
 # Loading the dataset :
-
+# path_dataset = 'DeepGED/MAO/dataset.ds'
 path_dataset = os.getenv('MAO_DATASET_PATH')
 print(path_dataset)
 Gs, y = loadDataset(path_dataset)
@@ -31,16 +32,46 @@ device = 'cpu'
 # node_dict, nb_edge_labels = build_node_dictionnary(Gs, "extended_label", "bond_type")
 # model = GedLayer(rings_andor_fw, node_label='extended_label', node_label_dict=node_dict, nb_edge_label=nb_edge_labels)
 # model = Net(Gs,normalize=True,node_label='extended_label')
-model = GedLayer(Gs, rings_andor_fw, normalize=True,
+
+#------------- TODO : A mettre dans une fonction plus propre --------------------
+
+
+normalize = True
+node_label = "extended_label"
+dict, nb_edge_labels = build_node_dictionnary(Gs,"extended_label","bond_type" )
+nb_labels = len(dict)
+print(nb_edge_labels)
+
+
+
+
+card = torch.tensor([G.order() for G in Gs]).to(device)
+card_max = card.max()
+A = torch.empty((len(Gs), card_max * card_max), dtype=torch.int, device=device)
+labels = torch.empty((len(Gs), card_max), dtype=torch.int, device=device)
+print(A.shape)
+for k in range(len(Gs)):
+    A_k, l = from_networkx_to_tensor(Gs[k], dict ,node_label)
+    A[k, 0:A_k.shape[1]] = A_k[0]
+    labels[k, 0:l.shape[0]] = l
+print("size of A",  A.size())
+print('adjacency matrices', A)
+print('node labels', labels)
+print('order of the graphs', card)
+
+
+#------------------------------------
+
+model = GedLayer( nb_labels , nb_edge_labels, rings_andor_fw, normalize=True,
                  node_label='extended_label')
 model.to(device)
-
 
 print(len(Gs))
 nb_iter = 100
 
 InsDel, nodeSub, edgeSub, loss_plt, loss_valid_plt, loss_train_plt = GEDclassification(
-    model, Gs, nb_iter, device, y, rings_andor_fw)
+    model, Gs, A , card , labels, nb_iter, device, y, rings_andor_fw)
+
 
 # Plotting Node/Edge insertion/deletion costs
 plt.figure(0)

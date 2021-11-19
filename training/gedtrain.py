@@ -6,7 +6,7 @@ import pickle as pkl
 from tqdm import tqdm
 import training.plot
 
-def GEDclassification(model, Gs, nb_iter, device, y, rings_andor_fw):
+def GEDclassification(model, Gs , A , card , labels   , nb_iter, device, y, rings_andor_fw):
     trainloader, validationloader, test_loader = splitting(Gs, y, saving_path=rings_andor_fw, already_divided=True)
     criterion = torch.nn.HingeEmbeddingLoss(margin=1.0, reduction='mean')
     criterionTri = triangular_constraint()
@@ -38,7 +38,9 @@ def GEDclassification(model, Gs, nb_iter, device, y, rings_andor_fw):
             # Forward pass: Compute predicted y by passing data to the model
             for k in tqdm(range(len(train_data))):
                 # print(train_data[k])
-                ged_pred[k] = model((train_data[k][0], train_data[k][1])).to(device)
+                g1_idx = train_data[k][0]
+                g2_idx = train_data[k][0]
+                ged_pred[k] = model((Gs[g1_idx],Gs[g2_idx]),(A[g1_idx], A[g2_idx]), (card[g1_idx], card[g2_idx]) , (labels[g1_idx],labels[g2_idx]) ).to(device)
 
             max = torch.max(ged_pred)
             min = torch.min(ged_pred)

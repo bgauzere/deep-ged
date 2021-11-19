@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-
+import networkx as nx
 
 def encode_onehot(labels):
     """
@@ -38,3 +38,11 @@ def load_MAO():
         X = F.pad(torch.Tensor(f_0), pad=(0, 0, 0, max_size-G.order()))
         inputs.append(X)
     return inputs, adjs, y  # t_classes
+
+
+
+def from_networkx_to_tensor( G, dict , node_label):
+        A = torch.tensor(nx.to_scipy_sparse_matrix(G, dtype=int, weight='bond_type').todense(), dtype=torch.int)
+        lab = [dict[G.nodes[v][node_label][0]] for v in nx.nodes(G)]
+
+        return (A.view(1, A.shape[0] * A.shape[1]), torch.tensor(lab))

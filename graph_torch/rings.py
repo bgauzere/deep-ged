@@ -3,39 +3,47 @@ from gklearn.utils.graphfiles import loadDataset
 import torch
 import os
 
-dataset_path = os.getenv('MAO_DATASET_PATH')
-Gs, y = loadDataset(dataset_path)
+
+# dataset_path = os.getenv('MAO_DATASET_PATH')
+# Gs, y = loadDataset(dataset_path)
 
 
 
 # Gs,y = loadDataset('DeepGED/Acyclic/dataset_bps.ds')
 
 def build_rings(graph, level=None):
-    return [build_ring(graph, node, level) for node in Gs[graph].nodes()]
+    return [build_ring(graph, node, level) for node in graph.nodes()]
 
 
 def build_ring(graph, u, level):
     """
-    Build  ring structure
-    Parameters
+    Build  ring structure 
+
+    Parameters 
     ---------
     Gs : Networkx graph
-        One graph with Networkx format
+        One graph with Networkx format 
+
     u : integer
         index of starting node of graph Gs
+
     level : integer
         limit for ring expansion
-    Return
+
+    Return 
     ---------
-    RlGu : list of nodes,inner edges, outer edges for each level
-    Notes
+    RlGu : list of nodes,inner edges, outer edges for each level  
+
+
+    Notes 
     ---------
     Popleft is used but pop is indicated in the scientific article
+
     """
 
     from collections import deque
     if level and level <= 0:
-        return torch.as_tensor([u, None, Gs[graph].edges(u)])
+        return torch.as_tensor([u, None, graph.edges(u)])
     l, N, OE, IE = 0, [], [], []
     open_nodes = deque([u])
     RlGu = []
@@ -45,9 +53,9 @@ def build_ring(graph, u, level):
         limit, level = inf, inf
     else:
         limit = level + 2
-    distance_to_u = [limit] * len(Gs[graph])
+    distance_to_u = [limit] * len(graph)
 
-    for edge in Gs[graph].edges():
+    for edge in graph.edges():
         visited_edges[(edge[0], edge[1])] = False
     distance_to_u[u] = 0
     while len(open_nodes):
@@ -57,7 +65,7 @@ def build_ring(graph, u, level):
             l += 1
             N, OE, IE = [], [], []
         N.append(v)
-        for edge in Gs[graph].edges(v):
+        for edge in graph.edges(v):
             if visited_edges[tuple(sorted(edge))]:
                 continue
             visited_edges[tuple(sorted(edge))] = True
@@ -71,7 +79,6 @@ def build_ring(graph, u, level):
                 OE.append(edge)
     RlGu.append([N, OE, IE])
     return RlGu
-
 
 def lsape_multiset_cost(layer_g, layer_h, attribute, node_costs, nodeInsDel, edge_costs, edgeInsDel, first_graph,
                         second_graph):
@@ -98,9 +105,9 @@ def lsape_multiset_cost(layer_g, layer_h, attribute, node_costs, nodeInsDel, edg
         for node in layer1:
             # print(node)
             if attribute == 0:
-                current_label = Gs[first_graph].nodes[node]['label'][0]
+                current_label = first_graph.nodes[node]['label'][0]
             else:
-                current_label = Gs[first_graph].get_edge_data(
+                current_label = first_graph.get_edge_data(
                     node[0], node[1]).get(0)
             if current_label not in labels_layer1:
                 labels_layer1[current_label] = 1
@@ -108,9 +115,9 @@ def lsape_multiset_cost(layer_g, layer_h, attribute, node_costs, nodeInsDel, edg
                 labels_layer1[current_label] += 1
         for node in layer2:
             if attribute == 0:
-                current_label = Gs[second_graph].nodes[node]['label'][0]
+                current_label = second_graph.nodes[node]['label'][0]
             else:
-                current_label = Gs[second_graph].get_edge_data(
+                current_label = second_graph.get_edge_data(
                     node[0], node[1]).get(0)
                 # current_label = Gs[second_graph].get_edge_data(node[0],node[1])[self.label_names['edge_labels'][0]]
             if current_label not in labels_layer2:
@@ -187,7 +194,7 @@ def insertion_cost(ring_h_node, alpha, level, node_costs, nodeInsDel, edge_costs
     return 0
 
 
-def compute_ring_distance(g, h, ring_g, ring_h, g_node_index, h_node_index, alpha, lbda, node_costs, nodeInsDel,
+def compute_ring_distance( ring_g, ring_h, g_node_index, h_node_index, alpha, lbda, node_costs, nodeInsDel,
                           edge_costs, edgeInsDel, first_graph, second_graph):
     red = 0
     # print('lbda : ', lbda)
