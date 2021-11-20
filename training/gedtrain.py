@@ -1,9 +1,10 @@
 import numpy as np
 import torch
-from losses.triangular_losses import TriangularConstraint as triangular_constraint
-from data_manager.data_split import splitting
 import pickle as pkl
 from tqdm import tqdm
+
+from deepged.triangular_losses import TriangularConstraint as triangular_constraint
+from deepged.data_manager.data_split import splitting
 import training.plot
 
 
@@ -21,7 +22,7 @@ def GEDclassification(model, Gs, A, card, labels, nb_iter, device, y, rings_ando
     optimizer = torch.optim.Adam(model.parameters())  # , lr=1e-3
 
     InsDel = np.empty((nb_iter, 2))
-    node_costs, nodeInsDel, edge_costs, edgeInsDel = model.from_weighs_to_costs()
+    node_costs, nodeInsDel, edge_costs, edgeInsDel = model.from_weights_to_costs()
     nodeSub = np.empty(
         (nb_iter, int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
     edgeSub = np.empty(
@@ -59,7 +60,7 @@ def GEDclassification(model, Gs, A, card, labels, nb_iter, device, y, rings_ando
             # Computing and printing loss
             train_labels = train_labels.to(device)
             loss = criterion(ged_pred, train_labels).to(device)
-            node_costs, nodeInsDel, edge_costs, edgeInsDel = model.from_weighs_to_costs()
+            node_costs, nodeInsDel, edge_costs, edgeInsDel = model.from_weights_to_costs()
             triangularInq = criterionTri(
                 node_costs, nodeInsDel, edge_costs, edgeInsDel)
             loss = loss * (1 + triangularInq)
@@ -115,9 +116,9 @@ def GEDclassification(model, Gs, A, card, labels, nb_iter, device, y, rings_ando
             ged_pred = torch.zeros(len(valid_data))
             for k in tqdm(range(len(valid_data))):
                 # print(train_data[k])
-                ged_pred[k] = model(
-                    (valid_data[k][0], valid_data[k][1])).to(device)
-
+                g1_idx, g2_idx = valid_data[k]
+                ged_pred[k] = model((Gs[g1_idx], Gs[g2_idx]), (A[g1_idx], A[g2_idx]), (
+                    card[g1_idx], card[g2_idx]), (labels[g1_idx], labels[g2_idx])).to(device)
             # y_pred = model(inputt).to(device)
             # Compute and print loss
             valid_labels = valid_labels.to(device)

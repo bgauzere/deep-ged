@@ -1,9 +1,17 @@
-from graph_torch import rings, svd
+'''
+Implemente la classe GedLayer qui permet d'opitimiser les couts de la ged pour fitter une propriété donnée
+TODO :
+ * Faire des classes filles pour implemeter les différentes stratégies
+ * Structure pour reunir les couts ? 
+'''
 from torch import nn
 import numpy as np
 import torch
-from svd import iterated_power as compute_major_axis
 import sys
+
+import deepged.rings
+import deepged.svd as svd
+from deepged.svd import iterated_power as compute_major_axis
 
 
 class GedLayer(nn.Module):
@@ -35,32 +43,37 @@ class GedLayer(nn.Module):
         nb_edge_pair_label = int(
             self.nb_edge_labels * (self.nb_edge_labels - 1) / 2)
 
-        nweighs = (1e-1) * (1.1 *
-                            np.random.rand(nb_node_pair_label + 1))
-        nweighs[-1] = .3
+        nweights = (1e-1) * (1.1 *
+                             np.random.rand(nb_node_pair_label + 1))
+        nweights[-1] = .3
 
-        eweighs = (1e-1) * (1.1 *
-                            np.random.rand(nb_edge_pair_label + 1))
-        eweighs[-1] = .2
+        eweights = (1e-1) * (1.1 *
+                             np.random.rand(nb_edge_pair_label + 1))
+        eweights[-1] = .2
 
-        self.node_weighs = nn.Parameter(torch.tensor(
-            nweighs, requires_grad=True, dtype=torch.float,
+        self.node_weights = nn.Parameter(torch.tensor(
+            nweights, requires_grad=True, dtype=torch.float,
             device=self.device))
-        self.edge_weighs = nn.Parameter(torch.tensor(
-            eweighs, requires_grad=True, dtype=torch.float,
+        self.edge_weights = nn.Parameter(torch.tensor(
+            eweights, requires_grad=True, dtype=torch.float,
             device=self.device))
 
     def forward(self, graph, adjacenceMatrix, graphCard, labels):
         '''
-        TODO
+        graph : tuple de deux graphes
+        adjacenceMatrix : tuple de deux matrices d'adjacences
+        graphCard : tuple des deux tailles des graphes (TODO : a extraire de g1 et g2)
+        labels : ? (TODO)
+        TODO : il me semble qu'il suffirait de passer juste les deux networkx graphes
         '''
+
         g1 = graph[0]
         g2 = graph[1]
 
         A_g1 = adjacenceMatrix[0]
         A_g2 = adjacenceMatrix[1]
 
-        cns, cndl, ces, cedl = self.from_weighs_to_costs()
+        cns, cndl, ces, cedl = self.from_weights_to_costs()
 
         n = graphCard[0]
         m = graphCard[1]
@@ -108,27 +121,17 @@ class GedLayer(nn.Module):
         ged = (.5 * v.T @ D @ v + c.T @ v)/normalize_factor
         return ged
 
-    def from_weighs_to_costs(self):
+    def from_weights_to_costs(self):
         """
         Transforme les poids en couts de ged en les rendant poisitifs
         un seul cout de suppresion/insertion.
         """
         # We apply the ReLU (rectified linear unit) function element-wise
         relu = torch.nn.ReLU()
-        cn = relu(self.node_weighs)
-        ce = relu(self.edge_weighs)
-        edgeInsDel = ce[-1]
-
-        # Or we can use the exponential function
-        # Returns a new tensor with the exponential of the elements of the input tensor
-        # cn=torch.exp(self.node_weighs)
-        # ce=torch.exp(self.edge_weighs)
-        # cn=self.node_weighs*self.node_weighs
-        # ce=self.edge_weighs*self.edge_weighs
-        # total_cost=cn.sum()+ce.sum()
-        # cn=cn/total_cost #/max
-        # ce=ce/total_cost
-        # edgeInsDel=ce[-1]
+        cn = relu(self.node_weights)
+        ce = relu(self.edge_weights)
+        edge_ins_del = ce[-1]
+        node_ins_del = cn[-1]
 
         # Initialization of the node costs
         node_costs = torch.zeros(
@@ -150,12 +153,13 @@ class GedLayer(nn.Module):
         else:
             edge_costs = torch.zeros(0, device=self.device)
 
-        return node_costs, cn[-1], edge_costs, edgeInsDel
+        return node_costs, node_ins_del, edge_costs, edge_ins_del
 
-    def construct_cost_matrix(self, A_g1, A_g2, card, labels, node_costs,
-                              edge_costs, nodeInsDel, edgeInsDel):
+    def construct_cost_matrix(self, A_g1, A_g2, card, labels,
+                              node_costs, edge_costs, node_ins_del, edge_ins_del):
         '''
         Retourne une matrice carrée de taile (n+1) * (m +1) contenant les couts sur les noeuds et les aretes
+        TODO : a analyser, tester et documenter
         '''
 
         n = card[0].item()
@@ -167,28 +171,28 @@ class GedLayer(nn.Module):
             A2 = torch.zeros((m + 1, m + 1), dtype=torch.int,
                              device=self.device)
             A2[0:m, 0:m] = A_g2[0:m * m].view(m, m)
-        A = self.matrix_edgeInsDel(A1, A2)
+        A = self.matrix_edge_ins_del(A1, A2)
 
         # costs: 0 node subs, 1 nodeIns/Del, 2 : edgeSubs, 3 edgeIns/Del
 
         # C=cost[3]*torch.cat([torch.cat([C12[l][k] for k in range(n+1)],1) for l in range(n+1)])
         # Pas bien sur mais cela semble fonctionner.
-        C = edgeInsDel * A
+        C = edge_ins_del * A
         if self.nb_edge_labels > 1:
             for k in range(self.nb_edge_labels):
                 for l in range(self.nb_edge_labels):
                     if k != l:
-                        C.add_(self.matrix_edgeSubst(A1, A2, k + 1,
-                                                     l + 1).multiply_(edge_costs[k][l]))
+                        C.add_(self.matrix_edge_subst(A1, A2, k + 1,
+                                                      l + 1).multiply_(edge_costs[k][l]))
 
         # C=cost[3]*torch.tensor(np.array([ [  k!=l and A1[k//(m+1),l//(m+1)]^A2[k%(m+1),l%(m+1)] for k in range((n+1)*(m+1))] for l in range((n+1)*(m+1))]),device=self.device)
 
         l1 = labels[0][0:n]
         l2 = labels[1][0:m]
         D = torch.zeros((n + 1) * (m + 1), device=self.device)
-        D[n * (m + 1):] = nodeInsDel
+        D[n * (m + 1):] = node_ins_del
         D[n * (m + 1) + m] = 0
-        D[[i * (m + 1) + m for i in range(n)]] = nodeInsDel
+        D[[i * (m + 1) + m for i in range(n)]] = node_ins_del
         for k in range(n * (m + 1)):
             if k % (m + 1) != m:
                 # self.get_node_costs(l1[k//(m+1)],l2[k%(m+1)])
@@ -203,7 +207,7 @@ class GedLayer(nn.Module):
 
         return C
 
-    def matrix_edgeInsDel(self, A1, A2):
+    def matrix_edge_ins_del(self, A1, A2):
         '''
         Doc TODO
         '''
@@ -217,7 +221,7 @@ class GedLayer(nn.Module):
 
         return torch.cat(torch.unbind(torch.cat(torch.unbind(C12, 1), 1), 0), 1)
 
-    def matrix_edgeSubst(self, A1, A2, lab1, lab2):
+    def matrix_edge_subst(self, A1, A2, lab1, lab2):
         '''
         Doc TODO
         '''
@@ -233,7 +237,9 @@ class GedLayer(nn.Module):
         '''
         Transforme une matrice de couts C en une matrice de similarité
         Retoune la matrice de similarité
-        TODO : a verifier
+        TODO :
+         * a verifier
+         * a mettre dans un autre fichier ?
         '''
         N = C.shape[0]
 
@@ -245,50 +251,9 @@ class GedLayer(nn.Module):
         Calcule les couts entre noeuds par les rings.
         TODO : nom à changer ?
         first et second graph sont des graphes ou des index ?
+        a mettre dans un autre fichier
         '''
-        # ring_g, ring_h sont initialisés dans forward. Attention à la dépendance, à modifier probablement
 
-        self.average_cost = [average_node_cost, average_edge_cost]
-
-        node_costs, nodeInsDel, edge_costs, edgeInsDel = self.from_weighs_to_costs()
-
-        lsape_instance = [[0 for _ in range(len(first_graph) + 1)]
-                          for __ in range(len(second_graph) + 1)]
-        for g_node_index in range(len(first_graph) + 1):
-            for h_node_index in range(len(second_graph) + 1):
-                lsape_instance[h_node_index][g_node_index] = rings.compute_ring_distance(self.ring_g, self.ring_h,
-                                                                                         g_node_index, h_node_index,
-                                                                                         alpha, lbda, node_costs,
-                                                                                         nodeInsDel, edge_costs,
-                                                                                         edgeInsDel, first_graph,
-                                                                                         second_graph)
-        for i in lsape_instance:
-            i = torch.as_tensor(i)
-        lsape_instance = torch.as_tensor(lsape_instance, device=self.device)
-        # print(type(lsape_instance))
-        return lsape_instance
-
-    def mapping_from_cost(self, C, n, m):
-        '''
-        Calcul un mapping noeuds à noeuds  à partir d'une matrice de couts de taille n+1 par m+1
-        Retourne le mapping sous forme vectoriele (?)
-        TODO : a factoriser avec toutes les fonctions de calcul de mapping
-        '''
-        c = torch.diag(C)
-        D = C - torch.eye(C.shape[0], device=self.device) * c
-        x0 = svd.eps_assign2(
-            torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
-
-        x = svd.franck_wolfe(x0, D, c, 5, 10, n, m)
-        return x
-
-    def mapping_from_similarity(self, C, n, m):
-        '''
-        Clacule une matrice de mapping à partir de similarité.
-        TODO : Utile ? pas vu dans le grep. à virer probablement
-        '''
-        M = self.similarity_from_cost(C)
-        first_ev = compute_major_axis(M)
         # first_ev=self.iterated_power(M,inv=True)
         if (first_ev.sum() < 0):
             first_ev = -first_ev
@@ -301,6 +266,7 @@ class GedLayer(nn.Module):
         '''
         Calcul un mapping à partir de S
         QUESTION : S similarité ou mapping ?
+        TODO : fonction du meme nom dans svd.py
         '''
         ones_n = torch.ones(S.shape[0], device=S.device)
         ones_m = torch.ones(S.shape[1], device=S.device)

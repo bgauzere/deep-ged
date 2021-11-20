@@ -19,10 +19,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from gklearn.utils.graphfiles import loadDataset
-import rings
-from svd import iterated_power as compute_major_axis
-from graph_torch import rings, svd
-from data_manager.label_manager import *
+
+import deepged.rings
+from deepged.svd import iterated_power as compute_major_axis
+from deepged.graph_torch import rings, svd
+from data_manager.label_manager import build_node_dictionnary, compute_extended_labels
 
 # Pourquoi faire ?
 torch.backends.cudnn.benchmark = True
@@ -35,8 +36,8 @@ class Evaluator():
         self.normalize = normalize
         self.node_label = node_label
         self.rings_andor_fw = rings_andor_fw
-        node_labels, self.nb_edge_labels = self.build_node_dictionnary(
-            GraphList)
+        node_labels, self.nb_edge_labels = build_node_dictionnary(
+            GraphList, node_label)
         self.nb_labels = len(node_labels)
         print(self.nb_edge_labels)
         # self.device=torch.device("cuda:0")
@@ -218,25 +219,6 @@ class Evaluator():
             edge_costs = torch.zeros(0, device=self.device)
 
         return node_costs, cn[-1], edge_costs, edgeInsDel
-
-    def build_node_dictionnary(self, GraphList):
-        # extraction de tous les labels d'atomes
-        node_labels = []
-        for G in GraphList:
-            for v in nx.nodes(G):
-                if not G.nodes[v][self.node_label][0] in node_labels:
-                    node_labels.append(G.nodes[v][self.node_label][0])
-        node_labels.sort()
-        # extraction d'un dictionnaire permettant de numéroter chaque label par un numéro.
-        dict = {}
-        k = 0
-        for label in node_labels:
-            dict[label] = k
-            k = k + 1
-        print(node_labels)
-        print(dict, len(dict))
-
-        return dict, max(max([[int(G[e[0]][e[1]]['bond_type']) for e in G.edges()] for G in GraphList]))
 
     def from_networkx_to_tensor(self, G, dict):
         A = torch.tensor(nx.to_scipy_sparse_matrix(

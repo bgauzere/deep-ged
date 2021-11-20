@@ -1,16 +1,17 @@
 import os
 import pickle as pkl
-from training.gedtrain import GEDclassification
-from training.train import classification
-from data_manager.label_manager import compute_extended_labels
-from gklearn.utils.graphfiles import loadDataset
 import torch
 import GPUtil
-from layers.GedLayer import GedLayer
 import matplotlib.pyplot as plt
 import matplotlib
-from graph_torch.ged_torch import build_node_dictionnary
-from utils import from_networkx_to_tensor
+
+from gklearn.utils.graphfiles import loadDataset
+
+from training.gedtrain import GEDclassification
+from training.train import classification
+from deepged.data_manager.label_manager import compute_extended_labels, build_node_dictionnary
+from deepged.model import GedLayer
+from deepged.utils import from_networkx_to_tensor
 matplotlib.use('TkAgg')
 
 
@@ -88,7 +89,7 @@ if __name__ == "__main__":
     for g in Gs:
         compute_extended_labels(g)
 
-    node_label = "extended_label"
+    node_label = "label"
     edge_label = "bond_type"
     node_labels, nb_edge_labels = build_node_dictionnary(
         Gs, node_label, edge_label)
