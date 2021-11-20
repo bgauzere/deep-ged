@@ -46,11 +46,11 @@ def svd_grad_K(S):
     # sign_diff = torch.sign(diff)
 
     # K_neg = sign_diff * max_diff
-    ##print('S=',S)
-    ##print('K_neg=',K_neg)
-    ##print('plus=',plus)
-    ##print('diff=',diff)
-    ## gaurd the matrix inversion
+    # print('S=',S)
+    # print('K_neg=',K_neg)
+    # print('plus=',plus)
+    # print('diff=',diff)
+    # gaurd the matrix inversion
     # K_neg[torch.arange(N), torch.arange(N)] = 10 ** (-5)
     # K_neg = 1 / K_neg
     # K_pos = 1 / plus
@@ -87,8 +87,9 @@ class CustomSVD(Function):
         try:
             U, S, V = torch.svd(input, some=True)
         except:
-            U, S, V = torch.svd(input + 1e-2 * input.mean() * torch.rand(input.shape[0], input.shape[1]))
-            import ipdb;
+            U, S, V = torch.svd(input + 1e-2 * input.mean()
+                                * torch.rand(input.shape[0], input.shape[1]))
+            import ipdb
             ipdb.set_trace()
 
         ctx.save_for_backward(U, S, V)

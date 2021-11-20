@@ -280,7 +280,7 @@ class GedLayer(nn.Module):
             torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
 
         x = svd.franck_wolfe(x0, D, c, 5, 10, n, m)
-        return x0
+        return x
 
     def mapping_from_similarity(self, C, n, m):
         '''
