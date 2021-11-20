@@ -49,8 +49,7 @@ def GEDclassification(model, Gs, A, card, labels, nb_iter, device, y, rings_ando
             # Forward pass: Compute predicted y by passing data to the model
             for k in tqdm(range(len(train_data))):
                 # print(train_data[k])
-                g1_idx = train_data[k][0]
-                g2_idx = train_data[k][0]
+                g1_idx , g2_idx= train_data[k]
                 ged_pred[k] = model((Gs[g1_idx], Gs[g2_idx]), (A[g1_idx], A[g2_idx]), (
                     card[g1_idx], card[g2_idx]), (labels[g1_idx], labels[g2_idx])).to(device)
 
