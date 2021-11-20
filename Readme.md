@@ -7,8 +7,7 @@
  * `export MAO_DATASET_PATH=/path/to/dataset.ds`
 
 # Structure du projet 
-## 
-`
+<pre>
 ├── data : Répertoire avec les dataset de molécules à tester
 │   ├── Acyclic
 │   └── MAO
@@ -39,7 +38,8 @@ compte plus de contexte
     ├── gedtrain.py
     ├── plot.py
     └── train.py
-`
+</pre>
+
 # Méthodes d'optimisation
 
 TODO
