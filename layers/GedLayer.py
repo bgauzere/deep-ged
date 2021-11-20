@@ -9,28 +9,22 @@ import sys
 
 
 class GedLayer(nn.Module):
-    def __init__(self,  nb_labels , nb_edge_labels, rings_andor_fw='sans_rings_sans_fw',
+    def __init__(self,  nb_labels, nb_edge_labels, rings_andor_fw='sans_rings_sans_fw',
                  normalize=False, node_label="label",
                  verbose=True):
-
 
         super(GedLayer, self).__init__()
 
         self.nb_edge_labels = nb_edge_labels
         self.nb_labels = nb_labels
 
-    
         self.normalize = normalize
-     
-
 
         self.normalize = normalize
         self.node_label = node_label
         self.rings_andor_fw = rings_andor_fw
 
-    
-
-        # TODO : a virer autre part 
+        # TODO : a virer autre part
         self.device = torch.device('cpu')
         self._init_weights()
         # self.card = torch.tensor([G.order()
@@ -59,7 +53,6 @@ class GedLayer(nn.Module):
     #         self.A[k, 0:A.shape[1]] = A[0]
     #         self.labels[k, 0:l.shape[0]] = l
 
-
     def _init_weights(self):
         """
         Initialise les poids pour les paires de labels de noeuds et d'edges
@@ -82,23 +75,23 @@ class GedLayer(nn.Module):
         self.edge_weighs = nn.Parameter(torch.tensor(
             eweighs, requires_grad=True, dtype=torch.float, device=self.device))
 
-    def forward(self, graph,adjacenceMatrix, graphCard , labels ):
+    def forward(self, graph, adjacenceMatrix, graphCard, labels):
         '''
         input sont les index (int) de deux graphes à comparer
         '''
         g1 = graph[0]
         g2 = graph[1]
 
-
         A_g1 = adjacenceMatrix[0]
         A_g2 = adjacenceMatrix[1]
-        
+
         cns, cndl, ces, cedl = self.from_weighs_to_costs()
 
         n = graphCard[0]
         m = graphCard[1]
-            
-        C = self.construct_cost_matrix(A_g1, A_g2, graphCard ,labels, cns, ces, cndl, cedl)
+
+        C = self.construct_cost_matrix(
+            A_g1, A_g2, graphCard, labels, cns, ces, cndl, cedl)
         c = torch.diag(C)
         D = C - torch.eye(C.shape[0], device=self.device) * c
 
@@ -130,10 +123,11 @@ class GedLayer(nn.Module):
 
         normalize_factor = 1.0
         if self.normalize:
-            nb_edge1 = (A_g1[0:n * n] != torch.zeros(n * n, device=self.device)).int().sum()
-            nb_edge2 = (A_g2[0:m * m] != torch.zeros(m * m, device=self.device)).int().sum()
+            nb_edge1 = (A_g1[0:n * n] != torch.zeros(n *
+                        n, device=self.device)).int().sum()
+            nb_edge2 = (A_g2[0:m * m] != torch.zeros(m *
+                        m, device=self.device)).int().sum()
             normalize_factor = cndl * (n + m) + cedl * (nb_edge1 + nb_edge2)
-
 
         v = torch.flatten(S)
         ged = (.5 * v.T @ D @ v + c.T @ v)/normalize_factor
@@ -185,48 +179,51 @@ class GedLayer(nn.Module):
 
         return node_costs, cn[-1], edge_costs, edgeInsDel
 
-    
-    def construct_cost_matrix(self, A_g1, A_g2,card,labels, node_costs, edge_costs, nodeInsDel, edgeInsDel):
-            n = card[0].item()
-            m = card[1].item()
-            with torch.no_grad():
-                A1 = torch.zeros((n + 1, n + 1), dtype=torch.int, device=self.device)
-                A1[0:n, 0:n] = A_g1[0:n * n].view(n, n)
-                A2 = torch.zeros((m + 1, m + 1), dtype=torch.int, device=self.device)
-                A2[0:m, 0:m] = A_g2[0:m * m].view(m, m)
-                A = self.matrix_edgeInsDel(A1, A2)
+    def construct_cost_matrix(self, A_g1, A_g2, card, labels, node_costs, edge_costs, nodeInsDel, edgeInsDel):
+        n = card[0].item()
+        m = card[1].item()
+        with torch.no_grad():
+            A1 = torch.zeros((n + 1, n + 1), dtype=torch.int,
+                             device=self.device)
+            A1[0:n, 0:n] = A_g1[0:n * n].view(n, n)
+            A2 = torch.zeros((m + 1, m + 1), dtype=torch.int,
+                             device=self.device)
+            A2[0:m, 0:m] = A_g2[0:m * m].view(m, m)
+            A = self.matrix_edgeInsDel(A1, A2)
 
-            # costs: 0 node subs, 1 nodeIns/Del, 2 : edgeSubs, 3 edgeIns/Del
+        # costs: 0 node subs, 1 nodeIns/Del, 2 : edgeSubs, 3 edgeIns/Del
 
-            # C=cost[3]*torch.cat([torch.cat([C12[l][k] for k in range(n+1)],1) for l in range(n+1)])
-            # Pas bien sur mais cela semble fonctionner.
-            C = edgeInsDel * A
-            if self.nb_edge_labels > 1:
-                for k in range(self.nb_edge_labels):
-                    for l in range(self.nb_edge_labels):
-                        if k != l:
-                            C.add_(self.matrix_edgeSubst(A1, A2, k + 1, l + 1).multiply_(edge_costs[k][l]))
+        # C=cost[3]*torch.cat([torch.cat([C12[l][k] for k in range(n+1)],1) for l in range(n+1)])
+        # Pas bien sur mais cela semble fonctionner.
+        C = edgeInsDel * A
+        if self.nb_edge_labels > 1:
+            for k in range(self.nb_edge_labels):
+                for l in range(self.nb_edge_labels):
+                    if k != l:
+                        C.add_(self.matrix_edgeSubst(A1, A2, k + 1,
+                               l + 1).multiply_(edge_costs[k][l]))
 
-            # C=cost[3]*torch.tensor(np.array([ [  k!=l and A1[k//(m+1),l//(m+1)]^A2[k%(m+1),l%(m+1)] for k in range((n+1)*(m+1))] for l in range((n+1)*(m+1))]),device=self.device)
+        # C=cost[3]*torch.tensor(np.array([ [  k!=l and A1[k//(m+1),l//(m+1)]^A2[k%(m+1),l%(m+1)] for k in range((n+1)*(m+1))] for l in range((n+1)*(m+1))]),device=self.device)
 
-            l1 = labels[0][0:n]
-            l2 = labels[1][0:m]
-            D = torch.zeros((n + 1) * (m + 1), device=self.device)
-            D[n * (m + 1):] = nodeInsDel
-            D[n * (m + 1) + m] = 0
-            D[[i * (m + 1) + m for i in range(n)]] = nodeInsDel
-            for k in range(n * (m + 1)):
-                if k % (m + 1) != m:
-                    D[k] = node_costs[l1[k // (m + 1)]][l2[k % (m + 1)]]  # self.get_node_costs(l1[k//(m+1)],l2[k%(m+1)])
+        l1 = labels[0][0:n]
+        l2 = labels[1][0:m]
+        D = torch.zeros((n + 1) * (m + 1), device=self.device)
+        D[n * (m + 1):] = nodeInsDel
+        D[n * (m + 1) + m] = 0
+        D[[i * (m + 1) + m for i in range(n)]] = nodeInsDel
+        for k in range(n * (m + 1)):
+            if k % (m + 1) != m:
+                # self.get_node_costs(l1[k//(m+1)],l2[k%(m+1)])
+                D[k] = node_costs[l1[k // (m + 1)]][l2[k % (m + 1)]]
 
-            # D[[k for k in range(n*(m+1)) if k%(m+1) != m]]=torch.tensor([node_costs[l1[k//(m+1)],l2[k%(m+1)]] for k in range(n*(m+1)) if k%(m+1) != m],device=self.device )
-            with torch.no_grad():
-                mask = torch.diag(torch.ones_like(D))
-            C = mask * torch.diag(D) + (1. - mask) * C
+        # D[[k for k in range(n*(m+1)) if k%(m+1) != m]]=torch.tensor([node_costs[l1[k//(m+1)],l2[k%(m+1)]] for k in range(n*(m+1)) if k%(m+1) != m],device=self.device )
+        with torch.no_grad():
+            mask = torch.diag(torch.ones_like(D))
+        C = mask * torch.diag(D) + (1. - mask) * C
 
-            # C[range(len(C)),range(len(C))]=D
+        # C[range(len(C)),range(len(C))]=D
 
-            return C
+        return C
 
     def matrix_edgeInsDel(self, A1, A2):
         Abin1 = (A1 != torch.zeros(
@@ -256,7 +253,7 @@ class GedLayer(nn.Module):
 
     def lsape_populate_instance(self, first_graph, second_graph, average_node_cost, average_edge_cost, alpha,
                                 lbda):  # ring_g, ring_h come from global ring with all graphs in so ring_g = rings['g'] and ring_h = rings['h']
-        
+
         self.average_cost = [average_node_cost, average_edge_cost]
         self.first_graph, self.second_graph = first_graph, second_graph
 
@@ -266,7 +263,7 @@ class GedLayer(nn.Module):
                           for __ in range(len(second_graph) + 1)]
         for g_node_index in range(len(first_graph) + 1):
             for h_node_index in range(len(second_graph) + 1):
-                lsape_instance[h_node_index][g_node_index] = rings.compute_ring_distance( self.ring_g, self.ring_h,
+                lsape_instance[h_node_index][g_node_index] = rings.compute_ring_distance(self.ring_g, self.ring_h,
                                                                                          g_node_index, h_node_index,
                                                                                          alpha, lbda, node_costs,
                                                                                          nodeInsDel, edge_costs,
