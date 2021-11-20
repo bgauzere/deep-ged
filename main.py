@@ -87,7 +87,7 @@ if __name__ == "__main__":
     # Utile pour rings ? du coup on a un coup pour chaque extended_label
 
     for g in Gs:
-        compute_extended_labels(g)
+        compute_extended_labels(g, label_node="label")
 
     node_label = "label"
     edge_label = "bond_type"

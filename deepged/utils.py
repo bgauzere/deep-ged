@@ -2,10 +2,12 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import networkx as nx
+import os
+
 
 def encode_onehot(labels):
     """
-    From Thomas Kips repo
+    From Thomas Kipf repo
     """
     classes = set(labels)
     classes_dict = {c: np.identity(len(classes))[i, :] for i, c in
@@ -14,13 +16,13 @@ def encode_onehot(labels):
                              dtype=np.int32)
     return labels_onehot
 
+
 def load_MAO():
     import networkx as nx
     from gklearn.utils.graphfiles import loadDataset
     atom_to_onehot = {'C': [1., 0., 0.], 'N': [0., 1., 0.], 'O': [1., 0., 0.]}
-    Gs, y = loadDataset(
-        "/home/luc/TRAVAIL/DeepGED/MAO/dataset.ds")
-    #t_classes = torch.Tensor(encode_onehot(y))
+    dataset_path = os.getenv('MAO_DATASET_PATH')
+    Gs, y = loadDataset(dataset_path)
     max_size = 30
     adjs = []
     inputs = []
@@ -40,9 +42,9 @@ def load_MAO():
     return inputs, adjs, y  # t_classes
 
 
+def from_networkx_to_tensor(G, dict, node_label):
+    A = torch.tensor(nx.to_scipy_sparse_matrix(
+        G, dtype=int, weight='bond_type').todense(), dtype=torch.int)
+    lab = [dict[G.nodes[v][node_label][0]] for v in nx.nodes(G)]
 
-def from_networkx_to_tensor( G, dict , node_label):
-        A = torch.tensor(nx.to_scipy_sparse_matrix(G, dtype=int, weight='bond_type').todense(), dtype=torch.int)
-        lab = [dict[G.nodes[v][node_label][0]] for v in nx.nodes(G)]
-
-        return (A.view(1, A.shape[0] * A.shape[1]), torch.tensor(lab))
+    return (A.view(1, A.shape[0] * A.shape[1]), torch.tensor(lab))

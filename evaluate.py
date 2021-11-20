@@ -364,7 +364,7 @@ if __name__ == "__main__":
     dataset_path = os.getenv("MAO_DATASET_PATH")
     Gs, y = loadDataset(dataset_path)
     for g in Gs:
-        compute_extended_labels(g)
+        compute_extended_labels(g, label_node="label")
     batch_size = 1
 
     params = {'batch_size': batch_size,

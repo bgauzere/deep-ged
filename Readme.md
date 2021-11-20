@@ -13,12 +13,10 @@
 │   └── MAO
 ├── deepged : package d'apprentissage des couts de la GED
 │   ├── data_manager : sous package à mieux ranger
-│   │   ├── DataSet.py
+│   │   ├── dataset.py
 │   │   ├── data_split.py
 │   │   ├── label_manager.py
-│   ├── extended_label.py : Calcule les labels étendus des noeuds. Permet de prendre en
-compte plus de contexte
-│   ├── GedLayer.py : Réseau de neurones principal pour apprendre les couts
+│   ├── model.py : Réseau de neurones principal pour apprendre les couts
 │   ├── rings.py : Calcules les rings pour chaque paire de noeuds afin de mieux les comparer 
 │   ├── svd.py  : a renommer, contient toutes les fonctions de calculs de mappings
 │   ├── triangular_losses.py : TODO 
@@ -34,7 +32,7 @@ compte plus de contexte
 ├── regression.py : à intégrer dans main.py à terme.
 ├── requirements.txt
 ├── tests : Dossier contenant les tests unitaires
-└── training : redondance et utilité par rapport au contenu de deepged à évaluer
+└── training : redondance et utilité par rapport au contenu de deepged,main et evaluate à évaluer
     ├── gedtrain.py
     ├── plot.py
     └── train.py
@@ -45,25 +43,32 @@ compte plus de contexte
 TODO
 
 # TODO 
+* configure main pour gerer le fw et les rings
+* Probleme de RAM -> regler par le refactoring (chez moi oui) ?
+* Redondance de code entre main et evaluate.py
+* Pourquoi quand on réduit le dataset ça ne marche pas ?
+* Doc forward de GedLayer (hugo et sidney)
+* evaluate.py : redondance de code
 
 Dans les commentaires et docstrings, renseignez d'éventuels trucs à faire et/ou à corriger
 avec les mots clés "TODO" et "QUESTION". Pour les lister: 
-`grep -r TODO --include "*py"`
+`grep -rn TODO --include "*py"`
 
-* training/gedtrain.py:    TODO : function trop longue, à factoriser
+Egalement, analyser les redondances entre main, evaluate et le package training
+*  training/gedtrain.py:    TODO : function trop longue, à factoriser
 * evaluate.py:TODO : Ne marche pas
-*evaluate.py:TODO : A modifier pour prendre en compte les matrices d'adjacence ?
-*deepged/svd.py:    # TODO Look into it
-*deepged/GedLayer.py:        # TODO : a virer autre part ?
-*deepged/GedLayer.py:        TODO
-*deepged/GedLayer.py:        Doc TODO
-*deepged/GedLayer.py:        Doc TODO
-*deepged/GedLayer.py:        TODO : a verifier
-*deepged/GedLayer.py:        TODO : nom à changer ?
-*deepged/GedLayer.py:        TODO : a factoriser avec toutes les fonctions de calcul de mapping
-*deepged/GedLayer.py:        TODO : Utile ? pas vu dans le grep. à virer probablement
-*regression.py:TODO : à reprendre pour intégrer au main
-*legacy/graph_torch/svd.py:    # TODO Look into it
+* evaluate.py:TODO : A modifier pour prendre en compte les matrices d'adjacence ?
+* deepged/svd.py:    # TODO Look into it
+* deepged/GedLayer.py:        # TODO : a virer autre part ?
+* deepged/GedLayer.py:        TODO
+* deepged/GedLayer.py:        Doc TODO
+* deepged/GedLayer.py:        Doc TODO
+* deepged/GedLayer.py:        TODO : a verifier
+* deepged/GedLayer.py:        TODO : nom à changer ?
+* deepged/GedLayer.py:        TODO : a factoriser avec toutes les fonctions de calcul de mapping
+* deepged/GedLayer.py:        TODO : Utile ? pas vu dans le grep. à virer probablement
+* regression.py:TODO : à reprendre pour intégrer au main
+* legacy/graph_torch/svd.py:    # TODO Look into it
 
 
 # Tests
