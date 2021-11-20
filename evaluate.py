@@ -22,8 +22,9 @@ from gklearn.utils.graphfiles import loadDataset
 
 import deepged.rings
 from deepged.svd import iterated_power as compute_major_axis
-from deepged.graph_torch import rings, svd
-from data_manager.label_manager import build_node_dictionnary, compute_extended_labels
+import deepged.rings as rings
+import deepged.svd as svd
+from deepged.data_manager.label_manager import build_node_dictionnary, compute_extended_labels
 
 # Pourquoi faire ?
 torch.backends.cudnn.benchmark = True
@@ -126,6 +127,8 @@ class Evaluator():
                 n = self.card[g1]
                 m = self.card[g2]
                 C = self.construct_cost_matrix(g1, g2, cns, ces, cndl, cedl)
+                c = torch.diag(C)
+                D = C - torch.eye(C.shape[0], device=self.device) * c
 
                 if self.rings_andor_fw == 'rings_sans_fw':
                     self.ring_g, self.ring_h = rings.build_rings(
@@ -165,8 +168,6 @@ class Evaluator():
                                 torch.zeros(m * m)).int().sum()
                     normalize_factor = cndl * \
                         (n + m) + cedl * (nb_edge1 + nb_edge2)
-                c = torch.diag(C)
-                D = C - torch.eye(C.shape[0], device=self.device) * c
                 ged = (.5 * v.T @ D @ v + c.T @ v) / normalize_factor
                 ged_matrix_test[i, j] = ged
 
@@ -187,14 +188,14 @@ class Evaluator():
 
         return ged_matrix_train, ged_matrix_test
 
-    def from_weighs_to_costs(self):
+    def from_weights_to_costs(self):
         relu = torch.nn.ReLU()
-        # cn=torch.exp(self.node_weighs)
-        # ce=torch.exp(self.edge_weighs)
-        # cn=self.node_weighs*self.node_weighs
-        # ce=self.edge_weighs*self.edge_weighs
-        cn = relu(self.node_weighs)
-        ce = relu(self.edge_weighs)
+        # cn=torch.exp(self.node_weights)
+        # ce=torch.exp(self.edge_weights)
+        # cn=self.node_weights*self.node_weights
+        # ce=self.edge_weights*self.edge_weights
+        cn = relu(self.node_weights)
+        ce = relu(self.edge_weights)
 
         # total_cost=cn.sum()+ce.sum()
         # cn=cn/total_cost
@@ -305,7 +306,7 @@ class Evaluator():
         self.average_cost = [average_node_cost, average_edge_cost]
         self.first_graph, self.second_graph = first_graph, second_graph
 
-        node_costs, nodeInsDel, edge_costs, edgeInsDel = self.from_weighs_to_costs()
+        node_costs, nodeInsDel, edge_costs, edgeInsDel = self.from_weights_to_costs()
 
         lsape_instance = [[0 for _ in range(len(g) + 1)]
                           for __ in range(len(h) + 1)]
