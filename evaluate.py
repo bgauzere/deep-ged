@@ -1,36 +1,34 @@
-import matplotlib
-import networkx as nx
+'''
+TODO : Ne marche pas
+TODO : A modifier pour prendre en compte les matrices d'adjacence ?
+Possiblement redondant avec main
+'''
 import sys
-from gklearn.utils.graphfiles import loadDataset
-from data_manager.label_manager import *
+import os
+import GPUtil
 import pickle as pkl
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import classification_report, confusion_matrix
+import matplotlib
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import classification_report, confusion_matrix
+import networkx as nx
 import numpy as np
-import rings
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from graph_torch import rings, svd
-from svd import iterated_power as compute_major_axis
-import GPUtil
+
+from gklearn.utils.graphfiles import loadDataset
+
+import deepged.rings
+from deepged.svd import iterated_power as compute_major_axis
+import deepged.rings as rings
+import deepged.svd as svd
+from deepged.data_manager.label_manager import build_node_dictionnary, compute_extended_labels
+
+# Pourquoi faire ?
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.enabled = True
-<<<<<<< HEAD
-#torch.autograd.set_detect_anomaly(True)
-import numpy as np
-from tqdm import tqdm
-import matplotlib.pyplot as plt
-from sklearn.metrics import classification_report, confusion_matrix
-from sklearn.neighbors import KNeighborsClassifier
-import pickle as pkl
-from data_manager.label_manager import *
-from gklearn.utils.graphfiles import loadDataset
-import sys
-import networkx as nx
-import matplotlib
 matplotlib.use('TkAgg')
 
 
@@ -39,8 +37,9 @@ class Evaluator():
         self.normalize = normalize
         self.node_label = node_label
         self.rings_andor_fw = rings_andor_fw
-        dict, self.nb_edge_labels = self.build_node_dictionnary(GraphList)
-        self.nb_labels = len(dict)
+        node_labels, self.nb_edge_labels = build_node_dictionnary(
+            GraphList, node_label)
+        self.nb_labels = len(node_labels)
         print(self.nb_edge_labels)
         # self.device=torch.device("cuda:0")
         self.device = torch.device('cpu')
@@ -53,7 +52,7 @@ class Evaluator():
             (len(GraphList), card_max), dtype=torch.int, device=self.device)
         print(self.A.shape)
         for k in range(len(GraphList)):
-            A, l = self.from_networkx_to_tensor(GraphList[k], dict)
+            A, l = self.from_networkx_to_tensor(GraphList[k], node_labels)
             self.A[k, 0:A.shape[1]] = A[0]
             self.labels[k, 0:l.shape[0]] = l
         print('adjacency matrices', self.A)
@@ -82,14 +81,16 @@ class Evaluator():
                 if self.rings_andor_fw == 'rings_sans_fw':
                     self.ring_g, self.ring_h = rings.build_rings(
                         g1, cedl.size()), rings.build_rings(g2, cedl.size())
-                    c_0 = self.lsape_populate_instance(g1, g2, cns, ces, cndl, cedl)
+                    c_0 = self.lsape_populate_instance(
+                        g1, g2, cns, ces, cndl, cedl)
                     print(C.shape, c_0.shape)
                     S = svd.eps_assign2(
                         torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
                 elif self.rings_andor_fw == 'rings_avec_fw':
                     self.ring_g, self.ring_h = rings.build_rings(
                         g1, cedl.size()), rings.build_rings(g2, cedl.size())
-                    c_0 = self.lsape_populate_instance(g1, g2, cns, ces, cndl, cedl)
+                    c_0 = self.lsape_populate_instance(
+                        g1, g2, cns, ces, cndl, cedl)
                     print(C.shape, c_0.shape)
                     x0 = svd.eps_assign2(
                         torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
@@ -132,14 +133,16 @@ class Evaluator():
                 if self.rings_andor_fw == 'rings_sans_fw':
                     self.ring_g, self.ring_h = rings.build_rings(
                         g1, cedl.size()), rings.build_rings(g2, cedl.size())
-                    c_0 = self.lsape_populate_instance(g1, g2, cns, ces, cndl, cedl)
+                    c_0 = self.lsape_populate_instance(
+                        g1, g2, cns, ces, cndl, cedl)
                     print(C.shape, c_0.shape)
                     S = svd.eps_assign2(
                         torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
                 elif self.rings_andor_fw == 'rings_avec_fw':
                     self.ring_g, self.ring_h = rings.build_rings(
                         g1, cedl.size()), rings.build_rings(g2, cedl.size())
-                    c_0 = self.lsape_populate_instance(g1, g2, cns, ces, cndl, cedl)
+                    c_0 = self.lsape_populate_instance(
+                        g1, g2, cns, ces, cndl, cedl)
                     print(C.shape, c_0.shape)
                     x0 = svd.eps_assign2(
                         torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
@@ -156,8 +159,6 @@ class Evaluator():
                     sys.exit()
 
                 v = torch.flatten(S)
-<<<<<<< HEAD
-=======
 
                 normalize_factor = 1.0
                 if self.normalize:
@@ -167,9 +168,6 @@ class Evaluator():
                                 torch.zeros(m * m)).int().sum()
                     normalize_factor = cndl * \
                         (n + m) + cedl * (nb_edge1 + nb_edge2)
-                c = torch.diag(C)
-                D = C - torch.eye(C.shape[0], device=self.device) * c
->>>>>>> 76caed8e07c125477cca0d238ef1abd471be88ed
                 ged = (.5 * v.T @ D @ v + c.T @ v) / normalize_factor
                 ged_matrix_test[i, j] = ged
 
@@ -187,60 +185,17 @@ class Evaluator():
         plt.subplot(122)
         plt.imshow(ged_matrix_test)
         plt.show()
-<<<<<<< HEAD
-=======
-        return ged_matrix_train, ged_matrix_test
-    # def forward(self, input):
-    #     ged = torch.zeros(len(input)).to(self.device)
-    #     node_costs, nodeInsDel, edge_costs, edgeInsDel = self.from_weighs_to_costs()
-    #
-    #     torch.cuda.empty_cache()
-    #     GPUtil.showUtilization(all=True)
-    #
-    #     # print('weighs:',self.weighs.device,'device:',self.device,'card:',self.card.device,'A:',self.A.device,'labels:',self.labels.device)
-    #     for k in tqdm(range(len(input))):
-    #         # print('Dans le forward')
-    #         # GPUtil.showUtilization(all=True)
-    #
-    #         g1 = input[k][0]
-    #         g2 = input[k][1]
-    #         n = self.card[g1]
-    #         m = self.card[g2]
-    #         # with torch.no_grad():
-    #         C = self.construct_cost_matrix(g1, g2, node_costs, edge_costs, nodeInsDel, edgeInsDel)
-    #
-    #         # self.ring_g,self.ring_h = rings.build_rings(g1,edgeInsDel.size()), rings.build_rings(g2,edgeInsDel.size())
-    #         # c_0=self.lsape_populate_instance(g1,g2,node_costs,edge_costs,nodeInsDel,edgeInsDel)
-    #
-    #         # S=self.mapping_from_similarity(C,n,m)
-    #         #            print('g1,g2=',g1.item(),g2.item())
-    #         S = self.mapping_from_cost(C, n, m)
-    #         v = torch.flatten(S)
-    #
-    #         normalize_factor = 1.0
-    #         if self.normalize:
-    #             nb_edge1 = (self.A[g1][0:n * n] != torch.zeros(n * n, device=self.device)).int().sum()
-    #             nb_edge2 = (self.A[g2][0:m * m] != torch.zeros(m * m, device=self.device)).int().sum()
-    #             normalize_factor = nodeInsDel * (n + m) + edgeInsDel * (nb_edge1 + nb_edge2)
-    #         c = torch.diag(C)
-    #         D = C - torch.eye(C.shape[0], device=self.device) * c
-    #         ged[k] = (.5 * v.T @ D @ v + c.T @ v) / normalize_factor
-    #
-    #     max = torch.max(ged)
-    #     min = torch.min(ged)
-    #     ged = (ged - min) / (max - min)
-    #
-    #     return ged
->>>>>>> 76caed8e07c125477cca0d238ef1abd471be88ed
 
-    def from_weighs_to_costs(self):
+        return ged_matrix_train, ged_matrix_test
+
+    def from_weights_to_costs(self):
         relu = torch.nn.ReLU()
-        # cn=torch.exp(self.node_weighs)
-        # ce=torch.exp(self.edge_weighs)
-        # cn=self.node_weighs*self.node_weighs
-        # ce=self.edge_weighs*self.edge_weighs
-        cn = relu(self.node_weighs)
-        ce = relu(self.edge_weighs)
+        # cn=torch.exp(self.node_weights)
+        # ce=torch.exp(self.edge_weights)
+        # cn=self.node_weights*self.node_weights
+        # ce=self.edge_weights*self.edge_weights
+        cn = relu(self.node_weights)
+        ce = relu(self.edge_weights)
 
         # total_cost=cn.sum()+ce.sum()
         # cn=cn/total_cost
@@ -265,25 +220,6 @@ class Evaluator():
             edge_costs = torch.zeros(0, device=self.device)
 
         return node_costs, cn[-1], edge_costs, edgeInsDel
-
-    def build_node_dictionnary(self, GraphList):
-        # extraction de tous les labels d'atomes
-        node_labels = []
-        for G in GraphList:
-            for v in nx.nodes(G):
-                if not G.nodes[v][self.node_label][0] in node_labels:
-                    node_labels.append(G.nodes[v][self.node_label][0])
-        node_labels.sort()
-        # extraction d'un dictionnaire permettant de numéroter chaque label par un numéro.
-        dict = {}
-        k = 0
-        for label in node_labels:
-            dict[label] = k
-            k = k + 1
-        print(node_labels)
-        print(dict, len(dict))
-
-        return dict, max(max([[int(G[e[0]][e[1]]['bond_type']) for e in G.edges()] for G in GraphList]))
 
     def from_networkx_to_tensor(self, G, dict):
         A = torch.tensor(nx.to_scipy_sparse_matrix(
@@ -370,7 +306,7 @@ class Evaluator():
         self.average_cost = [average_node_cost, average_edge_cost]
         self.first_graph, self.second_graph = first_graph, second_graph
 
-        node_costs, nodeInsDel, edge_costs, edgeInsDel = self.from_weighs_to_costs()
+        node_costs, nodeInsDel, edge_costs, edgeInsDel = self.from_weights_to_costs()
 
         lsape_instance = [[0 for _ in range(len(g) + 1)]
                           for __ in range(len(h) + 1)]
@@ -395,12 +331,6 @@ class Evaluator():
             torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
 
         x = svd.franck_wolfe(x0, D, c, 5, 10, n, m)
-
-        def print_grad(grad):
-            if (grad.norm() != 0.0):
-                print(grad)
-
-        #        x0.register_hook(print_grad)
         return x
 
     def mapping_from_similarity(self, C, n, m):
@@ -431,9 +361,10 @@ class Evaluator():
 
 
 if __name__ == "__main__":
-    Gs, y = loadDataset('../DeepGED/MAO/dataset.ds')
+    dataset_path = os.getenv("MAO_DATASET_PATH")
+    Gs, y = loadDataset(dataset_path)
     for g in Gs:
-        compute_extended_labels(g)
+        compute_extended_labels(g, label_node="label")
     batch_size = 1
 
     params = {'batch_size': batch_size,
@@ -445,26 +376,44 @@ if __name__ == "__main__":
 
     cns = None
 
-    train_graph = torch.load('../pickle_files/'+rings_andor_fw+'/train_graph',map_location=torch.device('cpu'),pickle_module=pkl)
-    test_graph = torch.load('../pickle_files/'+rings_andor_fw+'/test_graph',map_location=torch.device('cpu'),pickle_module=pkl)
-    train_label = torch.load('../pickle_files/'+rings_andor_fw+'/train_label',map_location=torch.device('cpu'),pickle_module=pkl)
-    test_label = torch.load('../pickle_files/'+rings_andor_fw+'/test_label',map_location=torch.device('cpu'),pickle_module=pkl)
+    train_graph = torch.load('./pickle_files/'+rings_andor_fw+'/train_graph',
+                             map_location=torch.device('cpu'), pickle_module=pkl)
+    test_graph = torch.load('./pickle_files/'+rings_andor_fw+'/test_graph',
+                            map_location=torch.device('cpu'), pickle_module=pkl)
+    train_label = torch.load('./pickle_files/'+rings_andor_fw+'/train_label',
+                             map_location=torch.device('cpu'), pickle_module=pkl)
+    test_label = torch.load('./pickle_files/'+rings_andor_fw+'/test_label',
+                            map_location=torch.device('cpu'), pickle_module=pkl)
 
     if weights == "learned":
-        cns = torch.load('../pickle_files/'+rings_andor_fw+'/nodeSub_min', map_location=torch.device('cpu'), pickle_module=pkl)
-        cndl = torch.load('../pickle_files/'+rings_andor_fw+'/nodeInsDel_min', map_location=torch.device('cpu'), pickle_module=pkl)
-        cedl = torch.load('../pickle_files/'+rings_andor_fw+'/edgeInsDel_min', map_location=torch.device('cpu'), pickle_module=pkl)
-        ces = torch.load('../pickle_files/'+rings_andor_fw+'/edgeSub_min', map_location=torch.device('cpu'), pickle_module=pkl)
+        cns = torch.load('./pickle_files/'+rings_andor_fw+'/nodeSub_min',
+                         map_location=torch.device('cpu'), pickle_module=pkl)
+        cndl = torch.load('./pickle_files/'+rings_andor_fw+'/nodeInsDel_min',
+                          map_location=torch.device('cpu'), pickle_module=pkl)
+        cedl = torch.load('./pickle_files/'+rings_andor_fw+'/edgeInsDel_min',
+                          map_location=torch.device('cpu'), pickle_module=pkl)
+        ces = torch.load('./pickle_files/'+rings_andor_fw+'/edgeSub_min',
+                         map_location=torch.device('cpu'), pickle_module=pkl)
     elif weights == "init":
-        cns = torch.load('../pickle_files/'+rings_andor_fw+'/nodeSubInit', map_location=torch.device('cpu'), pickle_module=pkl)
-        cndl = torch.load('../pickle_files/'+rings_andor_fw+'/nodeInsDelInit', map_location=torch.device('cpu'), pickle_module=pkl)
-        cedl= torch.load('../pickle_files/'+rings_andor_fw+'/edgeInsDelInit', map_location=torch.device('cpu'), pickle_module=pkl)
-        ces= torch.load('../pickle_files/'+rings_andor_fw+'/edgeSubInit', map_location=torch.device('cpu'), pickle_module=pkl)
+        cns = torch.load('./pickle_files/'+rings_andor_fw+'/nodeSubInit',
+                         map_location=torch.device('cpu'), pickle_module=pkl)
+        cndl = torch.load('./pickle_files/'+rings_andor_fw+'/nodeInsDelInit',
+                          map_location=torch.device('cpu'), pickle_module=pkl)
+        cedl = torch.load('./pickle_files/'+rings_andor_fw+'/edgeInsDelInit',
+                          map_location=torch.device('cpu'), pickle_module=pkl)
+        ces = torch.load('./pickle_files/'+rings_andor_fw+'/edgeSubInit',
+                         map_location=torch.device('cpu'), pickle_module=pkl)
     elif weights == "experts":
-        cns = torch.load('../pickle_files/'+rings_andor_fw+'/nodeSub_min', map_location=torch.device('cpu'), pickle_module=pkl)
-        cndl = torch.load('../pickle_files/'+rings_andor_fw+'/nodeInsDel_min', map_location=torch.device('cpu'), pickle_module=pkl)
-        cedl = torch.load('../pickle_files/'+rings_andor_fw+'/edgeInsDel_min', map_location=torch.device('cpu'), pickle_module=pkl)
-        ces = torch.load('../pickle_files/'+rings_andor_fw+'/edgeSub_min', map_location=torch.device('cpu'), pickle_module=pkl)
+        cns = torch.load('./pickle_files/'+rings_andor_fw+'/nodeSub_min',
+                         map_location=torch.device('cpu'), pickle_module=pkl)
+        cndl = torch.load('./pickle_files/'+rings_andor_fw+'/nodeInsDel_min',
+                          map_location=torch.device('cpu'), pickle_module=pkl)
+        cedl = torch.load('./pickle_files/'+rings_andor_fw+'/edgeInsDel_min',
+                          map_location=torch.device('cpu'), pickle_module=pkl)
+        ces = torch.load('./pickle_files/'+rings_andor_fw+'/edgeSub_min',
+                         map_location=torch.device('cpu'), pickle_module=pkl)
+
+        # couts constants pour tests
         cns = torch.ones(cns.shape)
         for i in range(cns.shape[0]):
             cns[i, i] = 0
@@ -480,7 +429,12 @@ if __name__ == "__main__":
 
     if cndl is not None:
         print(cns)
-        model = Evaluator(Gs, rings_andor_fw, normalize=False, node_label='extended_label')
-        model.classification(train_graph, test_graph, train_label, test_label, 5, cns, ces, cndl, cedl)
+        model = Evaluator(Gs, rings_andor_fw, normalize=False,
+                          node_label='label')
+        ged_train, ged_test = model.classification(train_graph, test_graph,
+                                                   train_label, test_label, 5, cns, ces, cndl, cedl)
+        print(ged_train)
+        print(ged_train)
+
     else:
         sys.exit("Error : weights are not defined")

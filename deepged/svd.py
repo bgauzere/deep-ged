@@ -1,3 +1,6 @@
+'''
+TODO : faire le ménage
+'''
 import torch
 from torch.autograd import Function
 
@@ -46,11 +49,11 @@ def svd_grad_K(S):
     # sign_diff = torch.sign(diff)
 
     # K_neg = sign_diff * max_diff
-    ##print('S=',S)
-    ##print('K_neg=',K_neg)
-    ##print('plus=',plus)
-    ##print('diff=',diff)
-    ## gaurd the matrix inversion
+    # print('S=',S)
+    # print('K_neg=',K_neg)
+    # print('plus=',plus)
+    # print('diff=',diff)
+    # gaurd the matrix inversion
     # K_neg[torch.arange(N), torch.arange(N)] = 10 ** (-5)
     # K_neg = 1 / K_neg
     # K_pos = 1 / plus
@@ -87,8 +90,9 @@ class CustomSVD(Function):
         try:
             U, S, V = torch.svd(input, some=True)
         except:
-            U, S, V = torch.svd(input + 1e-2 * input.mean() * torch.rand(input.shape[0], input.shape[1]))
-            import ipdb;
+            U, S, V = torch.svd(input + 1e-2 * input.mean()
+                                * torch.rand(input.shape[0], input.shape[1]))
+            import ipdb
             ipdb.set_trace()
 
         ctx.save_for_backward(U, S, V)
@@ -183,12 +187,13 @@ class CustomMajorAxis(Function):
             try:
                 U, S, V = torch.svd(input, some=True)
             except:
-                print('Error CustomMajorAxis, SVD pb detected trying to recover. M=', input)
+                print(
+                    'Error CustomMajorAxis, SVD pb detected trying to recover. M=', input)
                 print('norm of diagonal/norm of matrix',
                       100.0 * torch.norm(torch.diag(input), p=2) / torch.norm(input, p='fro'))
                 U, S, V = torch.svd(
                     input + 1e-2 * input.mean() * torch.rand(input.shape[0], input.shape[1], device=input.device))
-                import ipdb;
+                import ipdb
                 ipdb.set_trace()
 
         val, ind = torch.diag(V.T @ input @ V).sort(descending=True)
@@ -227,7 +232,8 @@ def iterated_power(M, inv=False):
 
     # If inv is true we affinate with the inverse method.
     if inv:
-        M_inv = torch.inverse(M - (l + 1) * torch.eye(M.shape[0], device=M.device))
+        M_inv = torch.inverse(
+            M - (l + 1) * torch.eye(M.shape[0], device=M.device))
         for i in range(10):
             mw = M_inv @ w
             w = mw / torch.norm(mw, 2)
@@ -253,17 +259,23 @@ def eps_assigment_from_mapping(S, nb_iter):
         D = torch.diag(1.0 / (Sk @ ones_m))
         D[D.shape[0] - 1, D.shape[1] - 1] = 1.0
         Sk1 = D @ Sk
-        norm_col = torch.linalg.norm((ones_n @ Sk1 - ones_m)[0:-1], ord=float('inf'))
+        norm_col = torch.linalg.norm(
+            (ones_n @ Sk1 - ones_m)[0:-1], ord=float('inf'))
         D = torch.diag(1.0 / (ones_n @ Sk1))
         D[D.shape[0] - 1, D.shape[1] - 1] = 1.0
         Sk = Sk1 @ D
-        norm_line = torch.linalg.norm((Sk @ ones_m - ones_n)[0:-1], ord=float('inf'))
+        norm_line = torch.linalg.norm(
+            (Sk @ ones_m - ones_n)[0:-1], ord=float('inf'))
         converged = (norm_col <= 1e-2) and (norm_line <= 1e-2)
         i = i + 1
     return Sk
 
 
 def eps_assign2(S, nb_iter):
+    '''
+    correspond au sinkhorn demontré par luc
+    àpriviligier
+    '''
     ones_n = torch.ones(S.shape[0], device=S.device)
     ones_m = torch.ones(S.shape[1], device=S.device)
     c = ones_m
@@ -273,11 +285,13 @@ def eps_assign2(S, nb_iter):
         rp = 1.0 / (S @ c)
         rp[-1] = 1.0
         if i >= 1:
-            norm_r = torch.linalg.norm(r / rp - torch.ones_like(r / rp), ord=float('inf'))
+            norm_r = torch.linalg.norm(
+                r / rp - torch.ones_like(r / rp), ord=float('inf'))
         r = rp
         cp = 1.0 / (S.T @ r)
         cp[-1] = 1.0
-        norm_c = torch.linalg.norm(c / cp - torch.ones_like(c / cp), ord=float('inf'))
+        norm_c = torch.linalg.norm(
+            c / cp - torch.ones_like(c / cp), ord=float('inf'))
         c = cp
         if i >= 1:
             converged = (norm_r <= 1e-2) and (norm_c <= 1e-2)
@@ -314,7 +328,8 @@ def franck_wolfe(x0, D, c, offset, kmax, n, m):
         #        t=offset/(offset+k)
         #        x=x+t*(b-x)
 
-        if alpha > 0:  # security check if b is not a local minima (does not occur with real hungarian)
+        # security check if b is not a local minima (does not occur with real hungarian)
+        if alpha > 0:
             # print('alpha positif(', k, ')', alpha.item())
             """
             if k==0:
@@ -348,5 +363,3 @@ def franck_wolfe(x0, D, c, offset, kmax, n, m):
         T = T + dT
 
     return x
-
-

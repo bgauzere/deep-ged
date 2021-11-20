@@ -1,5 +1,7 @@
-# This function splits the graph list Gs into two distinct sets of couples of graphs
-# One for training the model and one for testing it
+'''
+This function splits the graph list Gs into two distinct sets of couples of graphs
+One for training the model and one for testing it
+'''
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
@@ -7,6 +9,7 @@ import pickle as pkl
 import random
 import numpy as np
 import os
+
 
 def splitting(Gs, y, saving_path=None, already_divided=False):
     graph_idx = torch.arange(0, len(Gs), dtype=torch.int64)
@@ -27,14 +30,12 @@ def splitting(Gs, y, saving_path=None, already_divided=False):
                                 pickle_module=pkl)
     else:
         [train_graph, valid_graph, train_label, valid_label] = train_test_split(graph_idx, y, test_size=0.40,
-                                                                            train_size=0.60, shuffle=True,
-                                                                            stratify=y)
+                                                                                train_size=0.60, shuffle=True,
+                                                                                stratify=y)
 
         [valid_graph, test_graph, valid_label, test_label] = train_test_split(valid_graph, valid_label, test_size=0.50,
-                                                                          train_size=0.50, shuffle=True,
-                                                                          stratify=valid_label)
-
-
+                                                                              train_size=0.50, shuffle=True,
+                                                                              stratify=valid_label)
 
     # We make sure that the two sets contain distinct graphs
     train_graph, valid_graph = different_sets(train_graph, valid_graph, Gs)
@@ -55,7 +56,7 @@ def splitting(Gs, y, saving_path=None, already_divided=False):
                                                    num_workers=0)  # 64,128,len(couples_test_train)
 
     testloader = torch.utils.data.DataLoader(DatasetTest, batch_size=len(couples_test), drop_last=True,
-                                                   num_workers=0)  # 64,128,len(couples_test_train)
+                                             num_workers=0)  # 64,128,len(couples_test_train)
 
     print(len(trainloader), len(validationloader))
     print(len(trainloader), len(validationloader))
@@ -64,12 +65,18 @@ def splitting(Gs, y, saving_path=None, already_divided=False):
         os.makedirs('pickle_files/'+saving_path)
 
     if saving_path is not None and not already_divided:
-        torch.save(train_graph, 'pickle_files/' + saving_path + '/train_graph', pickle_module=pkl)
-        torch.save(valid_graph, 'pickle_files/' + saving_path + '/valid_graph', pickle_module=pkl)
-        torch.save(test_graph, 'pickle_files/' + saving_path + '/test_graph', pickle_module=pkl)
-        torch.save(train_label, 'pickle_files/' + saving_path + '/train_label', pickle_module=pkl)
-        torch.save(valid_label, 'pickle_files/' + saving_path + '/valid_label', pickle_module=pkl)
-        torch.save(test_label, 'pickle_files/' + saving_path + '/test_label', pickle_module=pkl)
+        torch.save(train_graph, 'pickle_files/' + saving_path +
+                   '/train_graph', pickle_module=pkl)
+        torch.save(valid_graph, 'pickle_files/' + saving_path +
+                   '/valid_graph', pickle_module=pkl)
+        torch.save(test_graph, 'pickle_files/' + saving_path +
+                   '/test_graph', pickle_module=pkl)
+        torch.save(train_label, 'pickle_files/' + saving_path +
+                   '/train_label', pickle_module=pkl)
+        torch.save(valid_label, 'pickle_files/' + saving_path +
+                   '/valid_label', pickle_module=pkl)
+        torch.save(test_label, 'pickle_files/' + saving_path +
+                   '/test_label', pickle_module=pkl)
 
     return trainloader, validationloader, testloader
 

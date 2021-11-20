@@ -1,21 +1,32 @@
 import numpy as np
 import torch
-from losses.triangular_losses import TriangularConstraint as triangular_constraint
-from data_manager.data_split import splitting
 import pickle as pkl
 from tqdm import tqdm
+
+from deepged.triangular_losses import TriangularConstraint as triangular_constraint
+from deepged.data_manager.data_split import splitting
 import training.plot
 
-def GEDclassification(model, Gs , A , card , labels   , nb_iter, device, y, rings_andor_fw):
-    trainloader, validationloader, test_loader = splitting(Gs, y, saving_path=rings_andor_fw, already_divided=True)
+
+def GEDclassification(model, Gs, A, card, labels, nb_iter, device, y, rings_andor_fw):
+    """
+    Run 100 epochs pour fiter les couts de la ged
+
+    TODO : function trop longue, à factoriser
+    """
+
+    trainloader, validationloader, test_loader = splitting(
+        Gs, y, saving_path=rings_andor_fw, already_divided=True)
     criterion = torch.nn.HingeEmbeddingLoss(margin=1.0, reduction='mean')
     criterionTri = triangular_constraint()
     optimizer = torch.optim.Adam(model.parameters())  # , lr=1e-3
 
     InsDel = np.empty((nb_iter, 2))
-    node_costs, nodeInsDel, edge_costs, edgeInsDel = model.from_weighs_to_costs()
-    nodeSub = np.empty((nb_iter, int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
-    edgeSub = np.empty((nb_iter, int(edge_costs.shape[0] * (edge_costs.shape[0] - 1) / 2)))
+    node_costs, nodeInsDel, edge_costs, edgeInsDel = model.from_weights_to_costs()
+    nodeSub = np.empty(
+        (nb_iter, int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
+    edgeSub = np.empty(
+        (nb_iter, int(edge_costs.shape[0] * (edge_costs.shape[0] - 1) / 2)))
     loss_plt = np.empty(nb_iter)
     loss_train_plt = np.empty(nb_iter)
     loss_valid_plt = np.empty(nb_iter)
@@ -40,7 +51,8 @@ def GEDclassification(model, Gs , A , card , labels   , nb_iter, device, y, ring
                 # print(train_data[k])
                 g1_idx = train_data[k][0]
                 g2_idx = train_data[k][0]
-                ged_pred[k] = model((Gs[g1_idx],Gs[g2_idx]),(A[g1_idx], A[g2_idx]), (card[g1_idx], card[g2_idx]) , (labels[g1_idx],labels[g2_idx]) ).to(device)
+                ged_pred[k] = model((Gs[g1_idx], Gs[g2_idx]), (A[g1_idx], A[g2_idx]), (
+                    card[g1_idx], card[g2_idx]), (labels[g1_idx], labels[g2_idx])).to(device)
 
             max = torch.max(ged_pred)
             min = torch.min(ged_pred)
@@ -48,8 +60,9 @@ def GEDclassification(model, Gs , A , card , labels   , nb_iter, device, y, ring
             # Computing and printing loss
             train_labels = train_labels.to(device)
             loss = criterion(ged_pred, train_labels).to(device)
-            node_costs, nodeInsDel, edge_costs, edgeInsDel = model.from_weighs_to_costs()
-            triangularInq = criterionTri(node_costs, nodeInsDel, edge_costs, edgeInsDel)
+            node_costs, nodeInsDel, edge_costs, edgeInsDel = model.from_weights_to_costs()
+            triangularInq = criterionTri(
+                node_costs, nodeInsDel, edge_costs, edgeInsDel)
             loss = loss * (1 + triangularInq)
             loss.to(device)
             loss.backward()
@@ -58,7 +71,8 @@ def GEDclassification(model, Gs , A , card , labels   , nb_iter, device, y, ring
             optimizer.step()
             print('loss.item of the train = ', t, loss.item())
             train_loss = + loss.item()  # * train_data.size(0)
-            if (loss.item() < tmp): tmp = loss.item()
+            if (loss.item() < tmp):
+                tmp = loss.item()
 
         # Getting the training loss
         loss_plt[t] = loss.item()
@@ -71,10 +85,14 @@ def GEDclassification(model, Gs , A , card , labels   , nb_iter, device, y, ring
             edgeInsDelInit = edgeInsDel
             nodeSubInit = node_costs
             edgeSubInit = edge_costs
-            torch.save(nodeInsDelInit, 'pickle_files/' + rings_andor_fw + '/nodeInsDelInit', pickle_module=pkl)
-            torch.save(edgeInsDelInit, 'pickle_files/' + rings_andor_fw + '/edgeInsDelInit', pickle_module=pkl)
-            torch.save(nodeSubInit, 'pickle_files/' + rings_andor_fw + '/nodeSubInit', pickle_module=pkl)
-            torch.save(edgeSubInit, 'pickle_files/' + rings_andor_fw + '/edgeSubInit', pickle_module=pkl)
+            torch.save(nodeInsDelInit, 'pickle_files/' +
+                       rings_andor_fw + '/nodeInsDelInit', pickle_module=pkl)
+            torch.save(edgeInsDelInit, 'pickle_files/' +
+                       rings_andor_fw + '/edgeInsDelInit', pickle_module=pkl)
+            torch.save(nodeSubInit, 'pickle_files/' +
+                       rings_andor_fw + '/nodeSubInit', pickle_module=pkl)
+            torch.save(edgeSubInit, 'pickle_files/' +
+                       rings_andor_fw + '/edgeSubInit', pickle_module=pkl)
 
             # Getting some information every 100 iterations, to follow the evolution
         if t % 100 == 99 or t == 0:
@@ -85,7 +103,8 @@ def GEDclassification(model, Gs , A , card , labels   , nb_iter, device, y, ring
             print('edge_costs : \n', edge_costs)
             print('edgeInsDel:', edgeInsDel.item())
 
-        print(f'Iteration {t + 1} \t\t Training Loss: {train_loss / len(trainloader)}')
+        print(
+            f'Iteration {t + 1} \t\t Training Loss: {train_loss / len(trainloader)}')
 
         # We delete to liberate some memory
         del ged_pred, train_loss, loss
@@ -97,8 +116,9 @@ def GEDclassification(model, Gs , A , card , labels   , nb_iter, device, y, ring
             ged_pred = torch.zeros(len(valid_data))
             for k in tqdm(range(len(valid_data))):
                 # print(train_data[k])
-                ged_pred[k] = model((valid_data[k][0], valid_data[k][1])).to(device)
-
+                g1_idx, g2_idx = valid_data[k]
+                ged_pred[k] = model((Gs[g1_idx], Gs[g2_idx]), (A[g1_idx], A[g2_idx]), (
+                    card[g1_idx], card[g2_idx]), (labels[g1_idx], labels[g2_idx])).to(device)
             # y_pred = model(inputt).to(device)
             # Compute and print loss
             valid_labels = valid_labels.to(device)
@@ -125,9 +145,11 @@ def GEDclassification(model, Gs , A , card , labels   , nb_iter, device, y, ring
                 edgeSub[t][k] = edge_costs[p][q]
                 k = k + 1
 
-        print(f'Iteration {t + 1} \t\t Validation Loss: {valid_loss / len(validationloader)}')
+        print(
+            f'Iteration {t + 1} \t\t Validation Loss: {valid_loss / len(validationloader)}')
         if min_valid_loss > valid_loss:
-            print(f'Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f})')
+            print(
+                f'Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f})')
             min_valid_loss = valid_loss
             iter_min_valid_loss = t
             nodeSub_min = node_costs
@@ -146,8 +168,12 @@ def GEDclassification(model, Gs , A , card , labels   , nb_iter, device, y, ring
     print(' Min cost for nodeSub = ', nodeSub_min)
     print(' Min cost for edgeSub = ', edgeSub_min)
     # Saving the minimum costs into pickle files
-    torch.save(nodeInsDel_min, 'pickle_files/' + rings_andor_fw + '/nodeInsDel_min', pickle_module=pkl)
-    torch.save(edgeInsDel_min, 'pickle_files/' + rings_andor_fw + '/edgeInsDel_min', pickle_module=pkl)
-    torch.save(nodeSub_min, 'pickle_files/' + rings_andor_fw + '/nodeSub_min', pickle_module=pkl)
-    torch.save(edgeSub_min, 'pickle_files/' + rings_andor_fw + '/edgeSub_min', pickle_module=pkl)
+    torch.save(nodeInsDel_min, 'pickle_files/' + rings_andor_fw +
+               '/nodeInsDel_min', pickle_module=pkl)
+    torch.save(edgeInsDel_min, 'pickle_files/' + rings_andor_fw +
+               '/edgeInsDel_min', pickle_module=pkl)
+    torch.save(nodeSub_min, 'pickle_files/' + rings_andor_fw +
+               '/nodeSub_min', pickle_module=pkl)
+    torch.save(edgeSub_min, 'pickle_files/' + rings_andor_fw +
+               '/edgeSub_min', pickle_module=pkl)
     return InsDel, nodeSub, edgeSub, loss_plt, loss_valid_plt, loss_train_plt

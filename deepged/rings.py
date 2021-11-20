@@ -3,7 +3,6 @@ import os.path as osp
 import urllib.request
 import tarfile
 from zipfile import ZipFile
-from data_tc15.graph_files import load_dataset
 from gklearn.utils.graphfiles import loadDataset
 import torch
 
