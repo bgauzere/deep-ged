@@ -75,22 +75,22 @@ def save_data(loss_plt, loss_valid_plt, loss_train_plt, InsDel, edgeSub,
 
 
 if __name__ == "__main__":
-    verbose = True
+    verbose = True  # -> parametre
     # Configuraiton du modele
-    rings_andor_fw = "sans_rings_sans_fw"
-    device = 'cpu'
-    normalize = True
+    rings_andor_fw = "sans_rings_sans_fw"  # -> parametre
+    device = 'cpu'  # -> parametre
+    normalize = True  # -> parametre
 
     # Init dataset
-    path_dataset = os.getenv('MAO_DATASET_PATH')
+    path_dataset = os.getenv('MAO_DATASET_PATH')  # -> parametre
     Gs, y = loadDataset(path_dataset)
     # Utile pour rings ? du coup on a un coup pour chaque extended_label
 
     for g in Gs:
         compute_extended_labels(g, label_node="label")
 
-    node_label = "label"
-    edge_label = "bond_type"
+    node_label = "label"  # -> parametre
+    edge_label = "bond_type"  # parametre
     node_labels, nb_edge_labels = build_node_dictionnary(
         Gs, node_label, edge_label)
     nb_labels = len(node_labels)
@@ -119,11 +119,11 @@ if __name__ == "__main__":
                      node_label='extended_label')
     model.to(device)
 
-    nb_iter = 5
+    nb_epochs = 5
     InsDel, nodeSub, edgeSub, loss_plt, loss_valid_plt, loss_train_plt = GEDclassification(
-        model, Gs, A, card, labels, nb_iter, device, y, rings_andor_fw)
+        model, Gs, A, card, labels, nb_epochs, device, y, rings_andor_fw)
 
-    visualize(InsDel, nb_iter, nodeSub, edgeSub, loss_plt, loss_valid_plt)
+    visualize(InsDel, nb_epochs, nodeSub, edgeSub, loss_plt, loss_valid_plt)
     # We save the losses into pickle files
     save_data(loss_plt, loss_valid_plt, loss_train_plt, InsDel, edgeSub,
               nodeSub, rings_andor_fw)
