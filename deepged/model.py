@@ -9,7 +9,7 @@ import numpy as np
 import torch
 import sys
 
-import deepged.rings
+import deepged.rings as rings
 import deepged.svd as svd
 from deepged.svd import iterated_power as compute_major_axis
 
@@ -87,14 +87,14 @@ class GedLayer(nn.Module):
             self.ring_g, self.ring_h = rings.build_rings(
                 graph[0], cedl.size()), rings.build_rings(graph[1], cedl.size())
             c_0 = self.lsape_populate_instance(g1, g2, cns, ces, cndl, cedl)
-            print(C.shape, c_0.shape)
+            # print(C.shape, c_0.shape)
             S = svd.eps_assign2(
                 torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
         elif self.rings_andor_fw == 'rings_avec_fw':
             self.ring_g, self.ring_h = rings.build_rings(
                 graph[0], cedl.size()), rings.build_rings(graph[1], cedl.size())
             c_0 = self.lsape_populate_instance(g1, g2, cns, ces, cndl, cedl)
-            print(C.shape, c_0.shape)
+            # print(C.shape, c_0.shape)
             x0 = svd.eps_assign2(
                 torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
             S = svd.franck_wolfe(x0, D, c, 5, 10, n, m)
@@ -246,21 +246,46 @@ class GedLayer(nn.Module):
         # return (torch.norm(C,p='fro')*torch.eye(N,device=self.device) -C)
         return (C.max() * torch.eye(N, device=self.device) - C)
 
-    def lsape_populate_instance(self, first_graph, second_graph, average_node_cost, average_edge_cost, alpha, lbda):
-        '''
-        Calcule les couts entre noeuds par les rings.
-        TODO : nom à changer ?
-        first et second graph sont des graphes ou des index ?
-        a mettre dans un autre fichier
-        '''
+    # def lsape_populate_instance(self, first_graph, second_graph, average_node_cost, average_edge_cost, alpha, lbda):
+    #     '''
+    #     Calcule les couts entre noeuds par les rings.
+    #     TODO : nom à changer ?
+    #     first et second graph sont des graphes ou des index ?
+    #     a mettre dans un autre fichier
+    #     '''
 
-        # first_ev=self.iterated_power(M,inv=True)
-        if (first_ev.sum() < 0):
-            first_ev = -first_ev
-        # enforce the difference, accelerate the convergence.
-        S = torch.exp(first_ev.view(n + 1, m + 1))
-        S = self.eps_assigment_from_mapping(S)
-        return S
+    #     # first_ev=self.iterated_power(M,inv=True)
+    #     if (first_ev.sum() < 0):
+    #         first_ev = -first_ev
+    #     # enforce the difference, accelerate the convergence.
+    #     S = torch.exp(first_ev.view(n + 1, m + 1))
+    #     S = self.eps_assigment_from_mapping(S)
+    #     return S
+
+    # TODO :  La fonction plus haut ne semble pas fonctionner, voici l'ancienne version (A discuter )
+    def lsape_populate_instance(self, first_graph, second_graph, average_node_cost, average_edge_cost, alpha,
+                            lbda):  
+    
+        self.average_cost = [average_node_cost, average_edge_cost]
+        self.first_graph, self.second_graph = first_graph, second_graph
+
+        node_costs, nodeInsDel, edge_costs, edgeInsDel = self.from_weights_to_costs()
+
+        lsape_instance = [[0 for _ in range(len(first_graph) + 1)]
+                            for __ in range(len(second_graph) + 1)]
+        for g_node_index in range(len(first_graph) + 1):
+            for h_node_index in range(len(second_graph) + 1):
+                lsape_instance[h_node_index][g_node_index] = rings.compute_ring_distance( self.ring_g, self.ring_h,
+                                                                                            g_node_index, h_node_index,
+                                                                                            alpha, lbda, node_costs,
+                                                                                            nodeInsDel, edge_costs,
+                                                                                            edgeInsDel, first_graph,
+                                                                                            second_graph)
+        for i in lsape_instance:
+            i = torch.as_tensor(i)
+        lsape_instance = torch.as_tensor(lsape_instance, device=self.device)
+        # print(type(lsape_instance))
+        return lsape_instance
 
     def eps_assigment_from_mapping(self, S):
         '''

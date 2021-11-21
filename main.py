@@ -86,7 +86,7 @@ if __name__ == "__main__":
     for g in Gs:
         compute_extended_labels(g, label_node="label")
 
-    node_label = "label"  # -> parametre
+    node_label = "extended_label"  # -> parametre
     edge_label = "bond_type"  # parametre
     node_labels, nb_edge_labels = build_node_dictionnary(
         Gs, node_label, edge_label)
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     GPUtil.showUtilization()
 
     model = GedLayer(nb_labels, nb_edge_labels, rings_andor_fw, normalize=True,
-                     node_label='extended_label')
+                     node_label=node_label)
     model.to(device)
 
     nb_epochs = 5
