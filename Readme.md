@@ -20,6 +20,7 @@
 │   ├── rings.py : Calcules les rings pour chaque paire de noeuds afin de mieux les comparer 
 │   ├── svd.py  : a renommer, contient toutes les fonctions de calculs de mappings
 │   ├── triangular_losses.py : TODO 
+│   ├── training.py : routine pour apprendre les couts 
 │   └── utils.py 
 ├── evaluate.py : Donné un jeu de couts, évalue la performance
 ├── legacy : vieux fichiers qu'on a peur de supprimer mais qu'on supprimera un jour
@@ -31,11 +32,7 @@
 ├── Readme.md
 ├── regression.py : à intégrer dans main.py à terme.
 ├── requirements.txt
-├── tests : Dossier contenant les tests unitaires
-└── training : redondance et utilité par rapport au contenu de deepged,main et evaluate à évaluer
-    ├── gedtrain.py
-    ├── plot.py
-    └── train.py
+└── tests : Dossier contenant les tests unitaires
 </pre>
 
 # Méthodes d'optimisation

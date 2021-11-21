@@ -10,6 +10,9 @@ import training.plot
 
 
 def classification(model, Gs, nb_iter, device, y, rings_andor_fw):
+    '''
+    TODO : diff avec GED Classification ?
+    '''
     trainloader, validationloader, test_loader = splitting(
         Gs, y, saving_path=rings_andor_fw, already_divided=True)
     criterion = torch.nn.HingeEmbeddingLoss(margin=1.0, reduction='mean')

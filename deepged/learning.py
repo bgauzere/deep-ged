@@ -5,7 +5,6 @@ from tqdm import tqdm
 
 from deepged.triangular_losses import TriangularConstraint as triangular_constraint
 from deepged.data_manager.data_split import splitting
-import training.plot
 
 
 def normalize(ged):

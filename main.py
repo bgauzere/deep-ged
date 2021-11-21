@@ -7,8 +7,7 @@ import matplotlib
 
 from gklearn.utils.graphfiles import loadDataset
 
-from training.gedtrain import GEDclassification
-from training.train import classification
+from deepged.learning import GEDclassification
 from deepged.data_manager.label_manager import compute_extended_labels, build_node_dictionnary
 from deepged.model import GedLayer
 from deepged.utils import from_networkx_to_tensor
