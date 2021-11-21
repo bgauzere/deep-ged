@@ -14,7 +14,7 @@ from deepged.utils import from_networkx_to_tensor
 matplotlib.use('TkAgg')
 
 
-def visualize(InsDel, nb_iter, nodeSub, edgeSub, loss_plt, loss_valid_plt):
+def visualize(InsDel, nb_iter, nodeSub, edgeSub,  loss_valid_plt):
     """
     Plot l'évolution des couts ainsi que la loss
     """
@@ -40,8 +40,8 @@ def visualize(InsDel, nb_iter, nodeSub, edgeSub, loss_plt, loss_valid_plt):
 
     # Plotting the evolution of the train loss
     plt.figure(3)
-    plt.plot(loss_plt)
-    plt.title('Evolution of the train loss (loss_plt)')
+    plt.plot(loss_train_plt)
+    plt.title('Evolution of the train loss')
 
     # Plotting the evolution of the validation loss
     plt.figure(4)
@@ -52,13 +52,11 @@ def visualize(InsDel, nb_iter, nodeSub, edgeSub, loss_plt, loss_valid_plt):
     plt.close()
 
 
-def save_data(loss_plt, loss_valid_plt, loss_train_plt, InsDel, edgeSub,
+def save_data(loss_valid_plt, loss_train_plt, InsDel, edgeSub,
               nodeSub, rings_andor_fw):
     """
     Sauvegarde l'ensemble du learning aisni que les poids optimisés
     """
-    torch.save(loss_plt, 'pickle_files/'+rings_andor_fw +
-               '/loss_plt', pickle_module=pkl)
     torch.save(loss_valid_plt, 'pickle_files/'+rings_andor_fw +
                '/loss_valid_plt', pickle_module=pkl)
     torch.save(loss_train_plt, 'pickle_files/'+rings_andor_fw +
@@ -119,10 +117,11 @@ if __name__ == "__main__":
     model.to(device)
 
     nb_epochs = 5
-    InsDel, nodeSub, edgeSub, loss_plt, loss_valid_plt, loss_train_plt = GEDclassification(
+    InsDel, nodeSub, edgeSub, loss_valid_plt, loss_train_plt = GEDclassification(
         model, Gs, A, card, labels, nb_epochs, device, y, rings_andor_fw)
 
-    visualize(InsDel, nb_epochs, nodeSub, edgeSub, loss_plt, loss_valid_plt)
+    print(loss_train_plt, loss_valid_plt)
+    visualize(InsDel, nb_epochs, nodeSub, edgeSub, loss_valid_plt)
     # We save the losses into pickle files
-    save_data(loss_plt, loss_valid_plt, loss_train_plt, InsDel, edgeSub,
+    save_data(loss_valid_plt, loss_train_plt, InsDel, edgeSub,
               nodeSub, rings_andor_fw)

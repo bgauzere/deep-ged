@@ -57,17 +57,15 @@ def GEDclassification(model, Gs, A, card, labels, nb_epochs, device, y, rings_an
         (nb_epochs, int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
     edge_sub = np.empty(
         (nb_epochs, int(edge_costs.shape[0] * (edge_costs.shape[0] - 1) / 2)))
-    loss_plt = np.empty(nb_epochs)
-    loss_train_plt = np.empty(nb_epochs)
-    loss_valid_plt = np.empty(nb_epochs)
+
+    loss_train = np.empty(nb_epochs)
+    loss_valid = np.empty(nb_epochs)
     min_valid_loss = np.inf
     iter_min_valid_loss = 0
 
     for epoch in range(nb_epochs):
-        train_loss = 0.0
-        valid_loss = 0.0
-        tmp = np.inf
-
+        current_train_loss = 0.0
+        current_valid_loss = 0.0
         # The training part :
         for train_data, train_labels in trainloader:
             ged_pred = torch.zeros(len(train_data))
@@ -82,29 +80,27 @@ def GEDclassification(model, Gs, A, card, labels, nb_epochs, device, y, rings_an
                 ged_pred[k] = model((Gs[g1_idx], Gs[g2_idx]), (A[g1_idx], A[g2_idx]), (
                     card[g1_idx], card[g2_idx]), (labels[g1_idx], labels[g2_idx])).to(device)
 
-            # Normalisation de la ged entre 0 et 1
+            # Normalisation de la ged entre -1 et 1
             ged_pred = normalize(ged_pred)
             # Computing and printing loss
             train_labels = train_labels.to(device)
+
             loss = criterion(ged_pred, train_labels).to(device)
             node_costs, node_ins_del, edge_costs, edge_ins_del = model.from_weights_to_costs()
             triangular_inequality = criterion_tri(
                 node_costs, node_ins_del, edge_costs, edge_ins_del)
             loss = loss * (1 + triangular_inequality)
             loss.to(device)
-            loss.backward()
 
+            loss.backward()
             optimizer.step()
+
             print('loss.item of the train = ', epoch, loss.item())
-            train_loss = train_loss + loss.item()  # * train_data.size(0)
-            if (loss.item() < tmp):
-                tmp = loss.item()
-        # Fin for Batch
+            current_train_loss = current_train_loss + loss.item()  # * train_data.size(0)
+            # Fin for Batch
 
         # Getting the training loss
-        loss_plt[epoch] = loss.item()
-        loss_train_plt[epoch] = train_loss / len(trainloader)
-        # loss_plt[t]=tmp
+        loss_train[epoch] = current_train_loss / len(trainloader)
 
         # Getting the costs of the first iteration, to compare later
         if epoch == 0:
@@ -113,7 +109,8 @@ def GEDclassification(model, Gs, A, card, labels, nb_epochs, device, y, rings_an
                              node_costs, edge_costs, rings_andor_fw)
 
         # Getting some information every 100 iterations, to follow the evolution
-        if epoch % 100 == 99 or epoch == 0:
+        # if epoch % 100 == 99 or epoch == 0:
+        if True:
             print('Distances: ', ged_pred)
             print('Loss Triangular:', triangular_inequality.item())
             print('node_costs : \n', node_costs)
@@ -122,10 +119,10 @@ def GEDclassification(model, Gs, A, card, labels, nb_epochs, device, y, rings_an
             print('edge_ins_del:', edge_ins_del.item())
 
         print(
-            f'Iteration {epoch + 1} \t\t Training Loss: {train_loss / len(trainloader)}')
+            f'Iteration {epoch + 1} \t\t Training Loss: {loss_train[epoch]}')
 
         # We delete to liberate some memory
-        del ged_pred, train_loss, loss
+        del ged_pred, current_train_loss, loss
         torch.cuda.empty_cache()
 
         # The validation part :
@@ -143,10 +140,10 @@ def GEDclassification(model, Gs, A, card, labels, nb_epochs, device, y, rings_an
             loss = criterion(ged_pred, valid_labels).to(device)
             loss.to(device)
             print('loss.item of the valid = ', epoch, loss.item())
-            valid_loss = valid_loss + loss.item()  # * valid_data.size(0)
+            current_valid_loss = current_valid_loss + loss.item()
 
         # Getting the validation loss
-        loss_valid_plt[epoch] = valid_loss / len(validationloader)
+        loss_valid[epoch] = current_valid_loss / len(validationloader)
 
         # Getting edges and nodes Insertion/Deletion costs
         ins_del[epoch][0] = node_ins_del.item()
@@ -164,11 +161,11 @@ def GEDclassification(model, Gs, A, card, labels, nb_epochs, device, y, rings_an
                 k = k + 1
 
         print(
-            f'Iteration {epoch + 1} \t\t Validation Loss: {valid_loss / len(validationloader)}')
-        if min_valid_loss > valid_loss:
+            f'Iteration {epoch + 1} \t\t Validation Loss: {loss_valid[epoch]}')
+        if min_valid_loss > loss_valid[epoch]:
             print(
-                f'Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f})')
-            min_valid_loss = valid_loss
+                f'Validation Loss Decreased({min_valid_loss:.6f}--->{loss_valid[epoch]:.6f})')
+            min_valid_loss = loss_valid[epoch]
             iter_min_valid_loss = epoch
             node_sub_min = node_costs
             edge_sub_min = edge_costs
@@ -176,7 +173,7 @@ def GEDclassification(model, Gs, A, card, labels, nb_epochs, device, y, rings_an
             edge_ins_del_min = edge_ins_del
 
         # We delete to liberate some memory
-        del valid_loss, loss
+        del current_valid_loss, loss
         # training.plot.plot("pickle_files/", rings_andor_fw)
         torch.cuda.empty_cache()
 
@@ -194,4 +191,4 @@ def GEDclassification(model, Gs, A, card, labels, nb_epochs, device, y, rings_an
                '/node_sub_min', pickle_module=pkl)
     torch.save(edge_sub_min, 'pickle_files/' + rings_andor_fw +
                '/edge_sub_min', pickle_module=pkl)
-    return ins_del, node_sub, edge_sub, loss_plt, loss_valid_plt, loss_train_plt
+    return ins_del, node_sub, edge_sub,  loss_valid, loss_train

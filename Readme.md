@@ -20,7 +20,7 @@
 │   ├── rings.py : Calcules les rings pour chaque paire de noeuds afin de mieux les comparer 
 │   ├── svd.py  : a renommer, contient toutes les fonctions de calculs de mappings
 │   ├── triangular_losses.py : TODO 
-│   ├── training.py : routine pour apprendre les couts 
+│   ├── learning.py : routine pour apprendre les couts 
 │   └── utils.py 
 ├── evaluate.py : Donné un jeu de couts, évalue la performance
 ├── legacy : vieux fichiers qu'on a peur de supprimer mais qu'on supprimera un jour
