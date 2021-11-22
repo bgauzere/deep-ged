@@ -1,9 +1,8 @@
-from data_manager.label_manager import compute_extended_labels
+from deepged.data_manager.label_manager import compute_extended_labels
 import pytest
-from layers.layer import Net
+from deepged.model import GedLayer
 from gklearn.utils.graphfiles import loadDataset
 import torch
-from graph_torch import ged_torch
 import os
 
 
@@ -13,7 +12,7 @@ Gs, y = loadDataset(path_dataset)
 for g in Gs:
     compute_extended_labels(g)
 
-model = Net(Gs)
+model = GedLayer(Gs)
 
 
 @pytest.fixture(scope="function")
