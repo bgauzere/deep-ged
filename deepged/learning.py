@@ -38,7 +38,7 @@ def save_first_costs(node_ins_del, edge_ins_del, node_costs, edge_costs, rings_a
 
 def GEDclassification(model, Gs, A, card, labels, nb_epochs, device, y, rings_andor_fw):
     """
-    Run 100 epochs pour fiter les couts de la ged
+    Run nb_epochs epochs pour fiter les couts de la ged
 
     TODO : function trop longue, à factoriser
     """
@@ -67,10 +67,10 @@ def GEDclassification(model, Gs, A, card, labels, nb_epochs, device, y, rings_an
         current_train_loss = 0.0
         current_valid_loss = 0.0
         # The training part :
+
         for train_data, train_labels in trainloader:
             ged_pred = torch.zeros(len(train_data))
             # Zero gradients, perform a backward pass, and update the weights.
-            optimizer.zero_grad()
             # Forward pass: Compute predicted y by passing data to the model
             for k in tqdm(range(len(train_data))):
                 # print(train_data[k])
@@ -91,10 +91,9 @@ def GEDclassification(model, Gs, A, card, labels, nb_epochs, device, y, rings_an
                 node_costs, node_ins_del, edge_costs, edge_ins_del)
             loss = loss * (1 + triangular_inequality)
             loss.to(device)
-
             loss.backward()
             optimizer.step()
-
+            optimizer.zero_grad()
             print('loss.item of the train = ', epoch, loss.item())
             current_train_loss = current_train_loss + loss.item()  # * train_data.size(0)
             # Fin for Batch

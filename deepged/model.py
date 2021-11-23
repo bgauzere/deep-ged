@@ -201,9 +201,9 @@ class GedLayer(nn.Module):
                 # D[[k for k in range(n*(m+1)) if k%(m+1) != m]]=torch.tensor([node_costs[l1[k//(m+1)],l2[k%(m+1)]] for k in range(n*(m+1)) if k%(m+1) != m],device=self.device )
         with torch.no_grad():
             mask = torch.diag(torch.ones_like(D))
-            C = mask * torch.diag(D) + (1. - mask) * C
+        C = mask * torch.diag(D) + (1. - mask) * C
 
-            # C[range(len(C)),range(len(C))]=D
+        # C[range(len(C)),range(len(C))]=D
 
         return C
 
