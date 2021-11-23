@@ -1,4 +1,4 @@
-import os
+import os, sys
 import pickle as pkl
 import torch
 import GPUtil
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     rings_andor_fw = "sans_rings_sans_fw"  # -> parametre
     device = 'cpu'  # -> parametre
     normalize = True  # -> parametre
-
+    nb_epochs = 100
     # Init dataset
     path_dataset = os.getenv('MAO_DATASET_PATH')  # -> parametre
     Gs, y = loadDataset(path_dataset)
@@ -94,11 +94,10 @@ if __name__ == "__main__":
 
     card = torch.tensor([G.order() for G in Gs]).to(device)
     card_max = card.max()
-    A = torch.empty((len(Gs), card_max * card_max),
-                    dtype=torch.int, device=device)
+    A = torch.empty((len(Gs), card_max * card_max), dtype=torch.int, device=device)
     labels = torch.empty((len(Gs), card_max), dtype=torch.int, device=device)
     for k in range(len(Gs)):
-        A_k, l = from_networkx_to_tensor(Gs[k], node_labels, node_label)
+        A_k, l = from_networkx_to_tensor(Gs[k], node_labels, node_label, device)
         A[k, 0:A_k.shape[1]] = A_k[0]
         labels[k, 0:l.shape[0]] = l
     if (verbose):
@@ -112,11 +111,13 @@ if __name__ == "__main__":
     # Getting the GPU status :
     GPUtil.showUtilization()
 
-    model = GedLayer(nb_labels, nb_edge_labels, rings_andor_fw, normalize=True,
+    model = GedLayer(nb_labels, nb_edge_labels, node_labels, rings_andor_fw, normalize=True,
                      node_label=node_label)
     model.to(device)
 
-    nb_epochs = 5
+    print(list(model.parameters()))
+    # sys.exit()
+
     InsDel, nodeSub, edgeSub, loss_valid_plt, loss_train_plt = GEDclassification(
         model, Gs, A, card, labels, nb_epochs, device, y, rings_andor_fw)
 

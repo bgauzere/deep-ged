@@ -9,18 +9,19 @@ import numpy as np
 import torch
 import sys
 
+from deepged.utils import from_networkx_to_tensor
 import deepged.rings as rings
 import deepged.svd as svd
 from deepged.svd import iterated_power as compute_major_axis
 
 
 class GedLayer(nn.Module):
-    def __init__(self,  nb_labels, nb_edge_labels, rings_andor_fw='sans_rings_sans_fw',
+    def __init__(self,  nb_labels, nb_edge_labels, dict_nodes, rings_andor_fw='sans_rings_sans_fw',
                  normalize=False, node_label="label",
                  verbose=True):
 
         super(GedLayer, self).__init__()
-
+        self.dict_nodes = dict_nodes
         self.nb_edge_labels = nb_edge_labels
         self.nb_labels = nb_labels
 
@@ -40,63 +41,63 @@ class GedLayer(nn.Module):
         """
         # Partie tri sup d'une matrice de nb_labels par nb_labels
         nb_node_pair_label = int(self.nb_labels * (self.nb_labels - 1) / 2.0)
-        nb_edge_pair_label = int(
-            self.nb_edge_labels * (self.nb_edge_labels - 1) / 2)
+        nb_edge_pair_label = int(self.nb_edge_labels * (self.nb_edge_labels - 1) / 2)
 
-        nweights = (1e-1) * (1.1 *
+        nweights = (1e-2) * (1.1 *
                              np.random.rand(nb_node_pair_label + 1))
-        nweights[-1] = .3
+        nweights[-1] = .03
 
-        eweights = (1e-1) * (1.1 *
+        eweights = (1e-2) * (1.1 *
                              np.random.rand(nb_edge_pair_label + 1))
-        eweights[-1] = .2
+        eweights[-1] = .02
+
+        nweights = np.multiply(nweights, 100)
+        eweights = np.multiply(eweights, 100)
 
         self.node_weights = nn.Parameter(torch.tensor(
-            nweights, requires_grad=True, dtype=torch.float,
+            nweights, dtype=torch.float,
             device=self.device))
         self.edge_weights = nn.Parameter(torch.tensor(
-            eweights, requires_grad=True, dtype=torch.float,
+            eweights, dtype=torch.float,
             device=self.device))
 
-    def forward(self, graph, adjacenceMatrix, graphCard, labels):
+    def forward(self, graphs):
         '''
-        graph : tuple de deux graphes
+        graph : tuple de deux graphes networkx
         adjacenceMatrix : tuple de deux matrices d'adjacences
         graphCard : tuple des deux tailles des graphes (TODO : a extraire de g1 et g2)
         labels : ? (TODO)
         TODO : il me semble qu'il suffirait de passer juste les deux networkx graphes
         '''
 
-        g1 = graph[0]
-        g2 = graph[1]
-
-        A_g1 = adjacenceMatrix[0]
-        A_g2 = adjacenceMatrix[1]
+        g1 = graphs[0]
+        g2 = graphs[1]
 
         cns, cndl, ces, cedl = self.from_weights_to_costs()
 
-        n = graphCard[0]
-        m = graphCard[1]
+        A_g1, labels_1 = from_networkx_to_tensor(g1, self.dict_nodes, self.node_label, self.device)
+        A_g2, labels_2 = from_networkx_to_tensor(g2, self.dict_nodes, self.node_label, self.device)
 
-        C = self.construct_cost_matrix(
-            A_g1, A_g2, graphCard, labels, cns, ces, cndl, cedl)
+        n = g1.order()
+        m = g2.order()
+
+        C = self.construct_cost_matrix(A_g1, A_g2, [n,m], [labels_1, labels_2], cns, ces, cndl, cedl)
         c = torch.diag(C)
         D = C - torch.eye(C.shape[0], device=self.device) * c
 
         if self.rings_andor_fw == 'rings_sans_fw':
             self.ring_g, self.ring_h = rings.build_rings(
-                graph[0], cedl.size()), rings.build_rings(graph[1], cedl.size())
+                graphs[0], cedl.size()), rings.build_rings(graphs[1], cedl.size())
             c_0 = self.lsape_populate_instance(g1, g2, cns, ces, cndl, cedl)
             # print(C.shape, c_0.shape)
-            S = svd.eps_assign2(
-                torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+            S = svd.eps_assign2(torch.exp(-.5 * c_0.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
         elif self.rings_andor_fw == 'rings_avec_fw':
             self.ring_g, self.ring_h = rings.build_rings(
-                graph[0], cedl.size()), rings.build_rings(graph[1], cedl.size())
+                graphs[0], cedl.size()), rings.build_rings(graphs[1], cedl.size())
             c_0 = self.lsape_populate_instance(g1, g2, cns, ces, cndl, cedl)
             # print(C.shape, c_0.shape)
             x0 = svd.eps_assign2(
-                torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
+                torch.exp(-.5 * c_0.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
             S = svd.franck_wolfe(x0, D, c, 5, 10, n, m)
         elif self.rings_andor_fw == 'sans_rings_avec_fw':
             x0 = svd.eps_assign2(
@@ -111,10 +112,8 @@ class GedLayer(nn.Module):
 
         normalize_factor = 1.0
         if self.normalize:
-            nb_edge1 = (A_g1[0:n * n] != torch.zeros(n *
-                        n, device=self.device)).int().sum()
-            nb_edge2 = (A_g2[0:m * m] != torch.zeros(m *
-                        m, device=self.device)).int().sum()
+            nb_edge1 = (A_g1[0:n * n] != torch.zeros(n * n, device=self.device)).int().sum()
+            nb_edge2 = (A_g2[0:m * m] != torch.zeros(m * m, device=self.device)).int().sum()
             normalize_factor = cndl * (n + m) + cedl * (nb_edge1 + nb_edge2)
 
         v = torch.flatten(S)
@@ -134,18 +133,14 @@ class GedLayer(nn.Module):
         node_ins_del = cn[-1]
 
         # Initialization of the node costs
-        node_costs = torch.zeros(
-            (self.nb_labels, self.nb_labels), device=self.device)
-        upper_part = torch.triu_indices(
-            node_costs.shape[0], node_costs.shape[1], offset=1, device=self.device)
+        node_costs = torch.zeros((self.nb_labels, self.nb_labels), device=self.device)
+        upper_part = torch.triu_indices(node_costs.shape[0], node_costs.shape[1], offset=1, device=self.device)
         node_costs[upper_part[0], upper_part[1]] = cn[0:-1]
         node_costs = node_costs + node_costs.T
 
         if self.nb_edge_labels > 1:
-            edge_costs = torch.zeros(
-                (self.nb_edge_labels, self.nb_edge_labels), device=self.device)
-            upper_part = torch.triu_indices(
-                edge_costs.shape[0], edge_costs.shape[1], offset=1, device=self.device)
+            edge_costs = torch.zeros((self.nb_edge_labels, self.nb_edge_labels), device=self.device)
+            upper_part = torch.triu_indices(edge_costs.shape[0], edge_costs.shape[1], offset=1, device=self.device)
             edge_costs[upper_part[0], upper_part[1]] = ce[0:-1]
             edge_costs = edge_costs + edge_costs.T
             del upper_part
@@ -162,15 +157,13 @@ class GedLayer(nn.Module):
         TODO : a analyser, tester et documenter
         '''
 
-        n = card[0].item()
-        m = card[1].item()
-        with torch.no_grad():
-            A1 = torch.zeros((n + 1, n + 1), dtype=torch.int,
-                             device=self.device)
-            A1[0:n, 0:n] = A_g1[0:n * n].view(n, n)
-            A2 = torch.zeros((m + 1, m + 1), dtype=torch.int,
-                             device=self.device)
-            A2[0:m, 0:m] = A_g2[0:m * m].view(m, m)
+        n = card[0]
+        m = card[1]
+
+        A1 = torch.zeros((n + 1, n + 1), dtype=torch.int,device=self.device)
+        A1[0:n, 0:n] = A_g1[0:n * n].view(n, n)
+        A2 = torch.zeros((m + 1, m + 1), dtype=torch.int,device=self.device)
+        A2[0:m, 0:m] = A_g2[0:m * m].view(m, m)
         A = self.matrix_edge_ins_del(A1, A2)
 
         # costs: 0 node subs, 1 nodeIns/Del, 2 : edgeSubs, 3 edgeIns/Del
@@ -182,8 +175,7 @@ class GedLayer(nn.Module):
             for k in range(self.nb_edge_labels):
                 for l in range(self.nb_edge_labels):
                     if k != l:
-                        C.add_(self.matrix_edge_subst(A1, A2, k + 1,
-                                                      l + 1).multiply_(edge_costs[k][l]))
+                        C.add_(self.matrix_edge_subst(A1, A2, k + 1, l + 1).multiply_(edge_costs[k][l]))
 
         # C=cost[3]*torch.tensor(np.array([ [  k!=l and A1[k//(m+1),l//(m+1)]^A2[k%(m+1),l%(m+1)] for k in range((n+1)*(m+1))] for l in range((n+1)*(m+1))]),device=self.device)
 
@@ -199,9 +191,9 @@ class GedLayer(nn.Module):
                 D[k] = node_costs[l1[k // (m + 1)]][l2[k % (m + 1)]]
 
                 # D[[k for k in range(n*(m+1)) if k%(m+1) != m]]=torch.tensor([node_costs[l1[k//(m+1)],l2[k%(m+1)]] for k in range(n*(m+1)) if k%(m+1) != m],device=self.device )
-        with torch.no_grad():
-            mask = torch.diag(torch.ones_like(D))
-            C = mask * torch.diag(D) + (1. - mask) * C
+
+        mask = torch.diag(torch.ones_like(D))
+        C = mask * torch.diag(D) + (1. - mask) * C
 
             # C[range(len(C)),range(len(C))]=D
 
