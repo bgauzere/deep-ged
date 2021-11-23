@@ -72,7 +72,7 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw):
 
     criterion = torch.nn.HingeEmbeddingLoss(margin=1.0, reduction='mean')
     criterion_tri = triangular_constraint()
-    optimizer = torch.optim.Adam(model.parameters())  # , lr=1e-3
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)  # , lr=1e-3
 
     node_costs, nodeInsDel, edge_costs, edge_ins_del = model.from_weights_to_costs()
     # TODO ; a documenter et mettre dansu ne fonction
@@ -92,13 +92,14 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw):
         current_valid_loss = 0.0
         # Learning step
 
-        ged_pred, train_labels = forward_data_model(trainloader, model, Gs, device)
+        ged_pred, train_labels = forward_data_model(
+            trainloader, model, Gs, device)
         loss = criterion(ged_pred, train_labels).to(device)
         node_costs, node_ins_del, edge_costs, edge_ins_del = model.from_weights_to_costs()
-        triangular_inequality = criterion_tri(node_costs, node_ins_del, edge_costs, edge_ins_del)
+        triangular_inequality = criterion_tri(
+            node_costs, node_ins_del, edge_costs, edge_ins_del)
         loss = loss * (1 + triangular_inequality)
         loss.to(device)
-
 
         optimizer.zero_grad()
         loss.backward()
