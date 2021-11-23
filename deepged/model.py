@@ -51,8 +51,8 @@ class GedLayer(nn.Module):
                              np.random.rand(nb_edge_pair_label + 1))
         eweights[-1] = .02
 
-        nweights = np.multiply(nweights, 100)
-        eweights = np.multiply(eweights, 100)
+        # nweights = np.multiply(nweights, 100)
+        # eweights = np.multiply(eweights, 100)
 
         self.node_weights = nn.Parameter(torch.tensor(
             nweights, dtype=torch.float,
