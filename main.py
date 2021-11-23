@@ -81,12 +81,14 @@ if __name__ == "__main__":
     # Init dataset
     path_dataset = os.getenv('MAO_DATASET_PATH')  # -> parametre
     Gs, y = loadDataset(path_dataset)
+    # Gs = Gs[:24]
+    # y = y[:24]
     # Utile pour rings ? du coup on a un coup pour chaque extended_label
 
     for g in Gs:
         compute_extended_labels(g, label_node="label")
 
-    node_label = "extended_label"  # -> parametre
+    node_label = "label"  # -> parametre
     edge_label = "bond_type"  # parametre
     node_labels, nb_edge_labels = build_node_dictionnary(
         Gs, node_label, edge_label)
@@ -116,7 +118,7 @@ if __name__ == "__main__":
                      node_label=node_label)
     model.to(device)
 
-    nb_epochs = 5
+    nb_epochs = 50
     InsDel, nodeSub, edgeSub, loss_valid_plt, loss_train_plt = GEDclassification(
         model, Gs, A, card, labels, nb_epochs, device, y, rings_andor_fw)
 

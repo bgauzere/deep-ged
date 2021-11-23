@@ -44,11 +44,11 @@ def GEDclassification(model, Gs, A, card, labels, nb_epochs, device, y, rings_an
     """
 
     trainloader, validationloader, test_loader = splitting(
-        Gs, y, saving_path=rings_andor_fw, already_divided=True)
+        Gs, y, saving_path=rings_andor_fw, already_divided=False)
 
     criterion = torch.nn.HingeEmbeddingLoss(margin=1.0, reduction='mean')
     criterion_tri = triangular_constraint()
-    optimizer = torch.optim.Adam(model.parameters())  # , lr=1e-3
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)  # , lr=1e-3
 
     node_costs, nodeInsDel, edge_costs, edge_ins_del = model.from_weights_to_costs()
     # TODO ; a documenter et mettre dansu ne fonction

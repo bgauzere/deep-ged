@@ -117,7 +117,7 @@ class GedLayer(nn.Module):
                         m, device=self.device)).int().sum()
             normalize_factor = cndl * (n + m) + cedl * (nb_edge1 + nb_edge2)
 
-        v = torch.flatten(S)
+        v = torch.flatten(S).to(self.device)
         ged = (.5 * v.T @ D @ v + c.T @ v)/normalize_factor
         return ged
 
@@ -264,23 +264,23 @@ class GedLayer(nn.Module):
 
     # TODO :  La fonction plus haut ne semble pas fonctionner, voici l'ancienne version (A discuter )
     def lsape_populate_instance(self, first_graph, second_graph, average_node_cost, average_edge_cost, alpha,
-                            lbda):  
-    
+                                lbda):
+
         self.average_cost = [average_node_cost, average_edge_cost]
         self.first_graph, self.second_graph = first_graph, second_graph
 
         node_costs, nodeInsDel, edge_costs, edgeInsDel = self.from_weights_to_costs()
 
         lsape_instance = [[0 for _ in range(len(first_graph) + 1)]
-                            for __ in range(len(second_graph) + 1)]
+                          for __ in range(len(second_graph) + 1)]
         for g_node_index in range(len(first_graph) + 1):
             for h_node_index in range(len(second_graph) + 1):
-                lsape_instance[h_node_index][g_node_index] = rings.compute_ring_distance( self.ring_g, self.ring_h,
-                                                                                            g_node_index, h_node_index,
-                                                                                            alpha, lbda, node_costs,
-                                                                                            nodeInsDel, edge_costs,
-                                                                                            edgeInsDel, first_graph,
-                                                                                            second_graph)
+                lsape_instance[h_node_index][g_node_index] = rings.compute_ring_distance(self.ring_g, self.ring_h,
+                                                                                         g_node_index, h_node_index,
+                                                                                         alpha, lbda, node_costs,
+                                                                                         nodeInsDel, edge_costs,
+                                                                                         edgeInsDel, first_graph,
+                                                                                         second_graph)
         for i in lsape_instance:
             i = torch.as_tensor(i)
         lsape_instance = torch.as_tensor(lsape_instance, device=self.device)
