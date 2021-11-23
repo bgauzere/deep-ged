@@ -285,13 +285,11 @@ def eps_assign2(S, nb_iter):
         rp = 1.0 / (S @ c)
         rp[-1] = 1.0
         if i >= 1:
-            norm_r = torch.linalg.norm(
-                r / rp - torch.ones_like(r / rp), ord=float('inf'))
+            norm_r = torch.linalg.norm(r / rp - torch.ones_like(r / rp), ord=float('inf'))
         r = rp
         cp = 1.0 / (S.T @ r)
         cp[-1] = 1.0
-        norm_c = torch.linalg.norm(
-            c / cp - torch.ones_like(c / cp), ord=float('inf'))
+        norm_c = torch.linalg.norm(c / cp - torch.ones_like(c / cp), ord=float('inf'))
         c = cp
         if i >= 1:
             converged = (norm_r <= 1e-2) and (norm_c <= 1e-2)
