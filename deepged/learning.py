@@ -60,7 +60,7 @@ def forward_data_model(loader, model, Gs, device):
     return ged_pred, labels.to(device)
 
 
-def GEDclassification(model, Gs, A, card, labels, nb_epochs, device, y, rings_andor_fw):
+def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw):
     """
     Run nb_epochs epochs pour fiter les couts de la ged
 
