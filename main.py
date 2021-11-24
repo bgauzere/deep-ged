@@ -101,6 +101,8 @@ if __name__ == "__main__":
     path_dataset = args.path
 
     Gs, y = loadDataset(path_dataset)
+    Gs = Gs[:24]
+    y = y[:24]
     # Utile pour rings ? du coup on a un cout pour chaque extended_label
 
     for g in Gs:
@@ -113,7 +115,6 @@ if __name__ == "__main__":
     nb_labels = len(node_labels)
     model = GedLayer(nb_labels, nb_edge_labels, node_labels, rings_andor_fw, normalize=args.normalize,
                      node_label=node_label)
-    model.to(device)
     InsDel, nodeSub, edgeSub, loss_valid_plt, loss_train_plt = GEDclassification(
         model, Gs, nb_epochs, device, y, rings_andor_fw)
 
