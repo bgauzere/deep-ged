@@ -101,8 +101,6 @@ if __name__ == "__main__":
     path_dataset = args.path
 
     Gs, y = loadDataset(path_dataset)
-    Gs = Gs[:24]
-    y = y[:24]
     # Utile pour rings ? du coup on a un cout pour chaque extended_label
 
     for g in Gs:

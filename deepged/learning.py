@@ -54,8 +54,7 @@ def forward_data_model(loader, model, Gs, device):
             g1_idx, g2_idx = data[k]
             ged_pred[k] = model((Gs[g1_idx], Gs[g2_idx]))
 
-        #ged_pred = normalize(ged_pred)
-        # Computing and printing loss
+        ged_pred = normalize(ged_pred)
 
     return ged_pred, labels
 
@@ -70,7 +69,8 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw):
     trainloader, validationloader, test_loader = splitting(
         Gs, y, saving_path=rings_andor_fw, already_divided=False)
 
-    criterion = torch.nn.HingeEmbeddingLoss(margin=1.0, reduction='sum')
+    #criterion = torch.nn.HingeEmbeddingLoss(margin=1.0, reduction='mean')
+    criterion = torch.nn.HingeEmbeddingLoss()
     criterion_tri = triangular_constraint()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)  # , lr=1e-3
 
@@ -95,13 +95,12 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw):
         ged_pred, train_labels = forward_data_model(
             trainloader, model, Gs, device)
         loss = criterion(ged_pred, train_labels)
+        # breakpoint()
         node_costs, node_ins_del, edge_costs, edge_ins_del = model.from_weights_to_costs()
         triangular_inequality = criterion_tri(
             node_costs, node_ins_del, edge_costs, edge_ins_del)
         loss = loss * (1 + triangular_inequality)
         loss
-        # breakpoint()
-
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -129,24 +128,23 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw):
             f'Iteration {epoch + 1} \t\t Training Loss: {loss_train[epoch]}')
 
         # We delete to liberate some memory
-        del ged_pred,  loss
-        torch.cuda.empty_cache()
 
         # The validation part :
-        ged_pred, valid_labels = forward_data_model(
-            validationloader, model, Gs, device)
+        with torch.no_grad():
+            ged_pred, valid_labels = forward_data_model(
+                validationloader, model, Gs, device)
 
-        loss = criterion(ged_pred, valid_labels)
-        loss
-        current_valid_loss = loss.item()
-        print(f"loss.item of the valid={current_valid_loss}")
+            loss = criterion(ged_pred, valid_labels)
+            loss
+            current_valid_loss = loss.item()
+            print(f"loss.item of the valid={current_valid_loss}")
 
-        # Getting the validation loss
-        loss_valid[epoch] = current_valid_loss
-        # Getting edges and nodes Insertion/Deletion costs
-        ins_del[epoch][0] = node_ins_del.item()
-        ins_del[epoch][1] = edge_ins_del.item()
-        # TODO : a pythoniser
+            # Getting the validation loss
+            loss_valid[epoch] = current_valid_loss
+            # Getting edges and nodes Insertion/Deletion costs
+            ins_del[epoch][0] = node_ins_del.item()
+            ins_del[epoch][1] = edge_ins_del.item()
+            # TODO : a pythoniser
         k = 0
         for p in range(node_costs.shape[0]):
             for q in range(p + 1, node_costs.shape[0]):
@@ -173,7 +171,7 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw):
         # We delete to liberate some memory
         del loss
         # training.plot.plot("pickle_files/", rings_andor_fw)
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
 
     print('iter and min_valid_loss = ', iter_min_valid_loss, min_valid_loss)
     print(' Min cost for node_ins_del = ', node_ins_del_min)
