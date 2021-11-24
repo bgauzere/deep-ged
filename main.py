@@ -82,8 +82,6 @@ if __name__ == "__main__":
     # Init dataset
     path_dataset = os.getenv('MAO_DATASET_PATH')  # -> parametre
     Gs, y = loadDataset(path_dataset)
-    Gs = Gs[:24]
-    y = y[:24]
     # Utile pour rings ? du coup on a un cout pour chaque extended_label
 
     for g in Gs:

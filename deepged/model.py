@@ -84,32 +84,8 @@ class GedLayer(nn.Module):
             A_g1, A_g2, [n, m], [labels_1, labels_2], cns, ces, cndl, cedl)
         c = torch.diag(C)
         D = C - torch.eye(C.shape[0]) * c
-
-        if self.rings_andor_fw == 'rings_sans_fw':
-            self.ring_g, self.ring_h = rings.build_rings(
-                graphs[0], cedl.size()), rings.build_rings(graphs[1], cedl.size())
-            c_0 = self.lsape_populate_instance(g1, g2, cns, ces, cndl, cedl)
-            # print(C.shape, c_0.shape)
-            S = svd.eps_assign2(
-                torch.exp(-.5 * c_0.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
-        elif self.rings_andor_fw == 'rings_avec_fw':
-            self.ring_g, self.ring_h = rings.build_rings(
-                graphs[0], cedl.size()), rings.build_rings(graphs[1], cedl.size())
-            c_0 = self.lsape_populate_instance(g1, g2, cns, ces, cndl, cedl)
-            # print(C.shape, c_0.shape)
-            x0 = svd.eps_assign2(
-                torch.exp(-.5 * c_0.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
-            S = svd.franck_wolfe(x0, D, c, 5, 10, n, m)
-        elif self.rings_andor_fw == 'sans_rings_avec_fw':
-            x0 = svd.eps_assign2(
-                torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
-            S = svd.franck_wolfe(x0, D, c, 5, 10, n, m)
-        elif self.rings_andor_fw == 'sans_rings_sans_fw':
-            S = svd.eps_assign2(
-                torch.exp(-.5 * c.view(n + 1, m + 1)), 10).view((n + 1) * (m + 1), 1)
-        else:
-            print("Error : rings_andor_fw => value not understood")
-            sys.exit()
+        S = svd.eps_assign2(
+            torch.exp(-.5*c.view(n+1, m+1)), 10).view((n+1)*(m+1), 1)
 
         normalize_factor = 1.0
         if self.normalize:
