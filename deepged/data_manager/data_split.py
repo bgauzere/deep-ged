@@ -96,6 +96,10 @@ def different_sets(my_train_D, my_valid_D, Gs):
 
 
 def creating_couples_after_splitting(train_D, y):
+    '''
+    Associe des index couples de graphes  à leur similarité de classes
+    ! réservé à la classif !
+    '''
     couples_train = []
 
     for i, g1_idx in enumerate(train_D):
@@ -104,8 +108,8 @@ def creating_couples_after_splitting(train_D, y):
             m = g2_idx
             couples_train.append([n, m])
     yt = np.ones(len(couples_train))
-    for k in couples_train:
-        if (y[k[0]] != y[k[1]]):
+    for k, [g1_idx, g2_idx] in enumerate(couples_train):
+        if (y[g1_idx] != y[g2_idx]):
             yt[k] = -1.0
 
     return torch.tensor(couples_train), yt

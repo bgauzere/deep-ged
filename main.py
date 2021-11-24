@@ -78,10 +78,12 @@ if __name__ == "__main__":
     rings_andor_fw = "sans_rings_sans_fw"  # -> parametre
     device = 'cpu'  # -> parametre
     normalize = True  # -> parametre
-    nb_epochs = 100
+    nb_epochs = 15
     # Init dataset
     path_dataset = os.getenv('MAO_DATASET_PATH')  # -> parametre
     Gs, y = loadDataset(path_dataset)
+    Gs = Gs[:24]
+    y = y[:24]
     # Utile pour rings ? du coup on a un cout pour chaque extended_label
 
     for g in Gs:
@@ -98,7 +100,7 @@ if __name__ == "__main__":
 
     model = GedLayer(nb_labels, nb_edge_labels, node_labels, rings_andor_fw, normalize=True,
                      node_label=node_label)
-    model.to(device)
+    # model.to(device)
 
     InsDel, nodeSub, edgeSub, loss_valid_plt, loss_train_plt = GEDclassification(
         model, Gs, nb_epochs, device, y, rings_andor_fw)
