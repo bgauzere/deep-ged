@@ -101,9 +101,7 @@ if __name__ == "__main__":
     path_dataset = args.path
 
     Gs, y = loadDataset(path_dataset)
-    # Gs = Gs[:24]
-    # y = y[:24]
-    # Utile pour rings ? du coup on a un coup pour chaque extended_label
+    # Utile pour rings ? du coup on a un cout pour chaque extended_label
 
     for g in Gs:
         compute_extended_labels(g, label_node="label")
@@ -117,9 +115,8 @@ if __name__ == "__main__":
                      node_label=node_label)
     model.to(device)
 
-    nb_epochs = 50
     InsDel, nodeSub, edgeSub, loss_valid_plt, loss_train_plt = GEDclassification(
-        model, Gs, A, card, labels, nb_epochs, device, y, rings_andor_fw)
+        model, Gs, nb_epochs, device, y, rings_andor_fw)
 
     print(loss_train_plt, loss_valid_plt)
     visualize(InsDel, nb_epochs, nodeSub, edgeSub, loss_valid_plt)
