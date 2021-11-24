@@ -111,7 +111,7 @@ if __name__ == "__main__":
     node_labels, nb_edge_labels = build_node_dictionnary(
         Gs, node_label, edge_label)
     nb_labels = len(node_labels)
-    model = GedLayer(nb_labels, nb_edge_labels, rings_andor_fw, normalize=args.normalize,
+    model = GedLayer(nb_labels, nb_edge_labels, node_labels, rings_andor_fw, normalize=args.normalize,
                      node_label=node_label)
     model.to(device)
     InsDel, nodeSub, edgeSub, loss_valid_plt, loss_train_plt = GEDclassification(

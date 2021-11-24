@@ -64,7 +64,6 @@ class GedLayer(nn.Module):
 
     def forward(self, graphs):
         '''
-
         :param graphs: tuple de graphes networkx
         :return: predicted GED between both graphs
         '''
