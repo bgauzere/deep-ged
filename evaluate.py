@@ -66,15 +66,15 @@ class Evaluator():
 
         cns, cndl, ces, cedl = self.get_weights()
 
-        A_g1, labels_1 = from_networkx_to_tensor(g1, self.dict_nodes, self.node_label, self.device)
-        A_g2, labels_2 = from_networkx_to_tensor(g2, self.dict_nodes, self.node_label, self.device)
+        A_g1, labels_1 = from_networkx_to_tensor(g1, self.dict_nodes, self.node_label, "cpu")
+        A_g2, labels_2 = from_networkx_to_tensor(g2, self.dict_nodes, self.node_label, "cpu")
 
         n = g1.order()
         m = g2.order()
 
         C = self.construct_cost_matrix(A_g1, A_g2, [n, m], [labels_1, labels_2], cns, ces, cndl, cedl)
         c = torch.diag(C)
-        D = C - torch.eye(C.shape[0], device=self.device) * c
+        D = C - torch.eye(C.shape[0]) * c
 
         if self.rings_andor_fw == 'rings_sans_fw':
             self.ring_g, self.ring_h = rings.build_rings(
@@ -103,8 +103,8 @@ class Evaluator():
 
         normalize_factor = 1.0
         if self.normalize:
-            nb_edge1 = (A_g1[0:n * n] != torch.zeros(n * n, device=self.device)).int().sum()
-            nb_edge2 = (A_g2[0:m * m] != torch.zeros(m * m, device=self.device)).int().sum()
+            nb_edge1 = (A_g1[0:n * n] != torch.zeros(n * n)).int().sum()
+            nb_edge2 = (A_g2[0:m * m] != torch.zeros(m * m)).int().sum()
             normalize_factor = cndl * (n + m) + cedl * (nb_edge1 + nb_edge2)
 
         v = torch.flatten(S)
@@ -122,9 +122,9 @@ class Evaluator():
         n = card[0]
         m = card[1]
 
-        A1 = torch.zeros((n + 1, n + 1), dtype=torch.int, device=self.device)
+        A1 = torch.zeros((n + 1, n + 1), dtype=torch.int)
         A1[0:n, 0:n] = A_g1[0:n * n].view(n, n)
-        A2 = torch.zeros((m + 1, m + 1), dtype=torch.int, device=self.device)
+        A2 = torch.zeros((m + 1, m + 1), dtype=torch.int)
         A2[0:m, 0:m] = A_g2[0:m * m].view(m, m)
         A = self.matrix_edge_ins_del(A1, A2)
 
@@ -143,7 +143,7 @@ class Evaluator():
 
         l1 = labels[0][0:n]
         l2 = labels[1][0:m]
-        D = torch.zeros((n + 1) * (m + 1), device=self.device)
+        D = torch.zeros((n + 1) * (m + 1))
         D[n * (m + 1):] = node_ins_del
         D[n * (m + 1) + m] = 0
         D[[i * (m + 1) + m for i in range(n)]] = node_ins_del
@@ -166,9 +166,9 @@ class Evaluator():
         Doc TODO
         '''
         Abin1 = (A1 != torch.zeros(
-            (A1.shape[0], A1.shape[1]), device=self.device))
+            (A1.shape[0], A1.shape[1])))
         Abin2 = (A2 != torch.zeros(
-            (A2.shape[0], A2.shape[1]), device=self.device))
+            (A2.shape[0], A2.shape[1])))
         C1 = torch.einsum('ij,kl->ijkl', torch.logical_not(Abin1), Abin2)
         C2 = torch.einsum('ij,kl->ijkl', Abin1, torch.logical_not(Abin2))
         C12 = torch.logical_or(C1, C2).int()
@@ -198,7 +198,7 @@ class Evaluator():
         N = C.shape[0]
 
         # return (torch.norm(C,p='fro')*torch.eye(N,device=self.device) -C)
-        return (C.max() * torch.eye(N, device=self.device) - C)
+        return (C.max() * torch.eye(N) - C)
 
     # TODO :  La fonction plus haut ne semble pas fonctionner, voici l'ancienne version (A discuter )
     def lsape_populate_instance(self, first_graph, second_graph, average_node_cost, average_edge_cost, alpha,
@@ -221,7 +221,7 @@ class Evaluator():
                                                                                          second_graph)
         for i in lsape_instance:
             i = torch.as_tensor(i)
-        lsape_instance = torch.as_tensor(lsape_instance, device=self.device)
+        lsape_instance = torch.as_tensor(lsape_instance)
         # print(type(lsape_instance))
         return lsape_instance
 
@@ -286,7 +286,7 @@ if __name__ == "__main__":
               'shuffle': True,
               'num_workers': 0}
 
-    rings_andor_fw = "sans_rings_avec_fw"
+    rings_andor_fw = "sans_rings_sans_fw"
     which_weights = ["init", "learned", "experts"]
 
     cns = None
@@ -306,31 +306,31 @@ if __name__ == "__main__":
         weights = which_weights[i]
 
         if weights == "learned":
-            cns = torch.load('./pickle_files/'+rings_andor_fw+'/nodeSub_min',
+            cns = torch.load('./pickle_files/'+rings_andor_fw+'/node_sub_min',
                              map_location=torch.device('cpu'), pickle_module=pkl)
-            cndl = torch.load('./pickle_files/'+rings_andor_fw+'/nodeInsDel_min',
+            cndl = torch.load('./pickle_files/'+rings_andor_fw+'/node_ins_del_min',
                               map_location=torch.device('cpu'), pickle_module=pkl)
-            cedl = torch.load('./pickle_files/'+rings_andor_fw+'/edgeInsDel_min',
+            cedl = torch.load('./pickle_files/'+rings_andor_fw+'/edge_ins_del_min',
                               map_location=torch.device('cpu'), pickle_module=pkl)
-            ces = torch.load('./pickle_files/'+rings_andor_fw+'/edgeSub_min',
+            ces = torch.load('./pickle_files/'+rings_andor_fw+'/edge_sub_min',
                              map_location=torch.device('cpu'), pickle_module=pkl)
         elif weights == "init":
-            cns = torch.load('./pickle_files/'+rings_andor_fw+'/nodeSubInit',
+            cns = torch.load('./pickle_files/'+rings_andor_fw+'/node_sub_init',
                              map_location=torch.device('cpu'), pickle_module=pkl)
-            cndl = torch.load('./pickle_files/'+rings_andor_fw+'/nodeInsDelInit',
+            cndl = torch.load('./pickle_files/'+rings_andor_fw+'/node_ins_del_init',
                               map_location=torch.device('cpu'), pickle_module=pkl)
-            cedl = torch.load('./pickle_files/'+rings_andor_fw+'/edgeInsDelInit',
+            cedl = torch.load('./pickle_files/'+rings_andor_fw+'/edge_ins_del_init',
                               map_location=torch.device('cpu'), pickle_module=pkl)
-            ces = torch.load('./pickle_files/'+rings_andor_fw+'/edgeSubInit',
+            ces = torch.load('./pickle_files/'+rings_andor_fw+'/edge_sub_init',
                              map_location=torch.device('cpu'), pickle_module=pkl)
         elif weights == "experts":
-            cns = torch.load('./pickle_files/'+rings_andor_fw+'/nodeSub_min',
+            cns = torch.load('./pickle_files/'+rings_andor_fw+'/node_sub_min',
                              map_location=torch.device('cpu'), pickle_module=pkl)
-            cndl = torch.load('./pickle_files/'+rings_andor_fw+'/nodeInsDel_min',
+            cndl = torch.load('./pickle_files/'+rings_andor_fw+'/node_ins_del_min',
                               map_location=torch.device('cpu'), pickle_module=pkl)
-            cedl = torch.load('./pickle_files/'+rings_andor_fw+'/edgeInsDel_min',
+            cedl = torch.load('./pickle_files/'+rings_andor_fw+'/edge_ins_del_min',
                               map_location=torch.device('cpu'), pickle_module=pkl)
-            ces = torch.load('./pickle_files/'+rings_andor_fw+'/edgeSub_min',
+            ces = torch.load('./pickle_files/'+rings_andor_fw+'/edge_sub_min',
                              map_location=torch.device('cpu'), pickle_module=pkl)
 
             # couts constants pour tests
@@ -374,5 +374,6 @@ if __name__ == "__main__":
         plt.subplot(len(ged_train), 2, (i*2)+2)
         plt.imshow(ged_test[i], vmin=0, vmax=max)
         plt.title(which_weights[i] + " costs : test")
+        plt.colorbar()
 
     plt.show()
