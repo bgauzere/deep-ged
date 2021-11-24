@@ -312,7 +312,7 @@ def franck_wolfe(x0, D, c, offset, kmax, n, m):
         Cp = (x.T @ D + c).view(n + 1, m + 1)
         minL, _ = Cp.min(dim=1)
         minL[-1] = 0.0
-        Cp = Cp - (minL.view(n + 1, 1) @ ones_m)
+        Cp.sub_(minL.view(n + 1, 1) @ ones_m)
         T = min(10, 7.0 * torch.log(torch.tensor(10.0)) / torch.max(Cp))
         #        minC,_=Cp.min(dim=0)
         #        minC[-1]=0.0

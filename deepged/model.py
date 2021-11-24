@@ -41,7 +41,8 @@ class GedLayer(nn.Module):
         """
         # Partie tri sup d'une matrice de nb_labels par nb_labels
         nb_node_pair_label = int(self.nb_labels * (self.nb_labels - 1) / 2.0)
-        nb_edge_pair_label = int(self.nb_edge_labels * (self.nb_edge_labels - 1) / 2)
+        nb_edge_pair_label = int(
+            self.nb_edge_labels * (self.nb_edge_labels - 1) / 2)
 
         nweights = (1e-2) * (1.1 *
                              np.random.rand(nb_node_pair_label + 1))
@@ -73,8 +74,10 @@ class GedLayer(nn.Module):
 
         cns, cndl, ces, cedl = self.from_weights_to_costs()
 
-        A_g1, labels_1 = from_networkx_to_tensor(g1, self.dict_nodes, self.node_label, self.device)
-        A_g2, labels_2 = from_networkx_to_tensor(g2, self.dict_nodes, self.node_label, self.device)
+        A_g1, labels_1 = from_networkx_to_tensor(
+            g1, self.dict_nodes, self.node_label, self.device)
+        A_g2, labels_2 = from_networkx_to_tensor(
+            g2, self.dict_nodes, self.node_label, self.device)
 
         n = g1.order()
         m = g2.order()
@@ -114,7 +117,7 @@ class GedLayer(nn.Module):
             nb_edge2 = (A_g2[0:m * m] != torch.zeros(m * m, device=self.device)).int().sum()
             normalize_factor = cndl * (n + m) + cedl * (nb_edge1 + nb_edge2)
 
-        v = torch.flatten(S)
+        v = torch.flatten(S).to(self.device)
         ged = (.5 * v.T @ D @ v + c.T @ v)/normalize_factor
         return ged
 
@@ -189,11 +192,10 @@ class GedLayer(nn.Module):
                 D[k] = node_costs[l1[k // (m + 1)]][l2[k % (m + 1)]]
 
                 # D[[k for k in range(n*(m+1)) if k%(m+1) != m]]=torch.tensor([node_costs[l1[k//(m+1)],l2[k%(m+1)]] for k in range(n*(m+1)) if k%(m+1) != m],device=self.device )
-
         mask = torch.diag(torch.ones_like(D))
         C = mask * torch.diag(D) + (1. - mask) * C
 
-            # C[range(len(C)),range(len(C))]=D
+        # C[range(len(C)),range(len(C))]=D
 
         return C
 
@@ -254,23 +256,23 @@ class GedLayer(nn.Module):
 
     # TODO :  La fonction plus haut ne semble pas fonctionner, voici l'ancienne version (A discuter )
     def lsape_populate_instance(self, first_graph, second_graph, average_node_cost, average_edge_cost, alpha,
-                            lbda):  
-    
+                                lbda):
+
         self.average_cost = [average_node_cost, average_edge_cost]
         self.first_graph, self.second_graph = first_graph, second_graph
 
         node_costs, nodeInsDel, edge_costs, edgeInsDel = self.from_weights_to_costs()
 
         lsape_instance = [[0 for _ in range(len(first_graph) + 1)]
-                            for __ in range(len(second_graph) + 1)]
+                          for __ in range(len(second_graph) + 1)]
         for g_node_index in range(len(first_graph) + 1):
             for h_node_index in range(len(second_graph) + 1):
-                lsape_instance[h_node_index][g_node_index] = rings.compute_ring_distance( self.ring_g, self.ring_h,
-                                                                                            g_node_index, h_node_index,
-                                                                                            alpha, lbda, node_costs,
-                                                                                            nodeInsDel, edge_costs,
-                                                                                            edgeInsDel, first_graph,
-                                                                                            second_graph)
+                lsape_instance[h_node_index][g_node_index] = rings.compute_ring_distance(self.ring_g, self.ring_h,
+                                                                                         g_node_index, h_node_index,
+                                                                                         alpha, lbda, node_costs,
+                                                                                         nodeInsDel, edge_costs,
+                                                                                         edgeInsDel, first_graph,
+                                                                                         second_graph)
         for i in lsape_instance:
             i = torch.as_tensor(i)
         lsape_instance = torch.as_tensor(lsape_instance, device=self.device)

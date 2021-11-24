@@ -62,12 +62,13 @@ def forward_data_model(loader, model, Gs, device):
 
 def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw):
     """
-    Run 100 epochs pour fiter les couts de la ged
+    Run nb_epochs epochs pour fiter les couts de la ged
 
     TODO : function trop longue, à factoriser
     """
 
-    trainloader, validationloader, test_loader = splitting(Gs, y, saving_path=rings_andor_fw, already_divided=True)
+    trainloader, validationloader, test_loader = splitting(
+        Gs, y, saving_path=rings_andor_fw, already_divided=True)
 
     criterion = torch.nn.HingeEmbeddingLoss(margin=1.0, reduction='mean')
     criterion_tri = triangular_constraint()
@@ -76,8 +77,10 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw):
     node_costs, nodeInsDel, edge_costs, edge_ins_del = model.from_weights_to_costs()
     # TODO ; a documenter et mettre dansu ne fonction
     ins_del = np.empty((nb_epochs, 2))
-    node_sub = np.empty((nb_epochs, int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
-    edge_sub = np.empty((nb_epochs, int(edge_costs.shape[0] * (edge_costs.shape[0] - 1) / 2)))
+    node_sub = np.empty(
+        (nb_epochs, int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
+    edge_sub = np.empty(
+        (nb_epochs, int(edge_costs.shape[0] * (edge_costs.shape[0] - 1) / 2)))
 
     loss_train = np.empty(nb_epochs)
     loss_valid = np.empty(nb_epochs)
@@ -87,7 +90,6 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw):
     for epoch in range(nb_epochs):
         current_train_loss = 0.0
         current_valid_loss = 0.0
-
         # Learning step
 
         ged_pred, train_labels = forward_data_model(trainloader, model, Gs, device)

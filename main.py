@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 import pickle as pkl
 import torch
 import GPUtil
@@ -86,7 +87,7 @@ if __name__ == "__main__":
     for g in Gs:
         compute_extended_labels(g, label_node="label")
 
-    node_label = "extended_label"  # -> parametre
+    node_label = "label"  # -> parametre
     edge_label = "bond_type"  # parametre
     node_labels, nb_edge_labels = build_node_dictionnary(
         Gs, node_label, edge_label)
