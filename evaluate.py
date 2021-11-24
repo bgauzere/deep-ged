@@ -286,7 +286,7 @@ if __name__ == "__main__":
               'shuffle': True,
               'num_workers': 0}
 
-    rings_andor_fw = "sans_rings_avec_fw"
+    rings_andor_fw = "sans_rings_sans_fw"
     which_weights = ["init", "learned", "experts"]
 
     cns = None
@@ -306,31 +306,31 @@ if __name__ == "__main__":
         weights = which_weights[i]
 
         if weights == "learned":
-            cns = torch.load('./pickle_files/'+rings_andor_fw+'/nodeSub_min',
+            cns = torch.load('./pickle_files/'+rings_andor_fw+'/node_sub_min',
                              map_location=torch.device('cpu'), pickle_module=pkl)
-            cndl = torch.load('./pickle_files/'+rings_andor_fw+'/nodeInsDel_min',
+            cndl = torch.load('./pickle_files/'+rings_andor_fw+'/node_ins_del_min',
                               map_location=torch.device('cpu'), pickle_module=pkl)
-            cedl = torch.load('./pickle_files/'+rings_andor_fw+'/edgeInsDel_min',
+            cedl = torch.load('./pickle_files/'+rings_andor_fw+'/edge_ins_del_min',
                               map_location=torch.device('cpu'), pickle_module=pkl)
-            ces = torch.load('./pickle_files/'+rings_andor_fw+'/edgeSub_min',
+            ces = torch.load('./pickle_files/'+rings_andor_fw+'/edge_sub_min',
                              map_location=torch.device('cpu'), pickle_module=pkl)
         elif weights == "init":
-            cns = torch.load('./pickle_files/'+rings_andor_fw+'/nodeSubInit',
+            cns = torch.load('./pickle_files/'+rings_andor_fw+'/node_sub_init',
                              map_location=torch.device('cpu'), pickle_module=pkl)
-            cndl = torch.load('./pickle_files/'+rings_andor_fw+'/nodeInsDelInit',
+            cndl = torch.load('./pickle_files/'+rings_andor_fw+'/node_ins_del_init',
                               map_location=torch.device('cpu'), pickle_module=pkl)
-            cedl = torch.load('./pickle_files/'+rings_andor_fw+'/edgeInsDelInit',
+            cedl = torch.load('./pickle_files/'+rings_andor_fw+'/edge_ins_del_init',
                               map_location=torch.device('cpu'), pickle_module=pkl)
-            ces = torch.load('./pickle_files/'+rings_andor_fw+'/edgeSubInit',
+            ces = torch.load('./pickle_files/'+rings_andor_fw+'/edge_sub_init',
                              map_location=torch.device('cpu'), pickle_module=pkl)
         elif weights == "experts":
-            cns = torch.load('./pickle_files/'+rings_andor_fw+'/nodeSub_min',
+            cns = torch.load('./pickle_files/'+rings_andor_fw+'/node_sub_min',
                              map_location=torch.device('cpu'), pickle_module=pkl)
-            cndl = torch.load('./pickle_files/'+rings_andor_fw+'/nodeInsDel_min',
+            cndl = torch.load('./pickle_files/'+rings_andor_fw+'/node_ins_del_min',
                               map_location=torch.device('cpu'), pickle_module=pkl)
-            cedl = torch.load('./pickle_files/'+rings_andor_fw+'/edgeInsDel_min',
+            cedl = torch.load('./pickle_files/'+rings_andor_fw+'/edge_ins_del_min',
                               map_location=torch.device('cpu'), pickle_module=pkl)
-            ces = torch.load('./pickle_files/'+rings_andor_fw+'/edgeSub_min',
+            ces = torch.load('./pickle_files/'+rings_andor_fw+'/edge_sub_min',
                              map_location=torch.device('cpu'), pickle_module=pkl)
 
             # couts constants pour tests
