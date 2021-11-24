@@ -81,7 +81,7 @@ if __name__ == "__main__":
     # Init dataset
     path_dataset = os.getenv('MAO_DATASET_PATH')  # -> parametre
     Gs, y = loadDataset(path_dataset)
-    # Utile pour rings ? du coup on a un coup pour chaque extended_label
+    # Utile pour rings ? du coup on a un cout pour chaque extended_label
 
     for g in Gs:
         compute_extended_labels(g, label_node="label")
@@ -92,22 +92,6 @@ if __name__ == "__main__":
         Gs, node_label, edge_label)
     nb_labels = len(node_labels)
 
-    card = torch.tensor([G.order() for G in Gs]).to(device)
-    card_max = card.max()
-    A = torch.empty((len(Gs), card_max * card_max), dtype=torch.int, device=device)
-    labels = torch.empty((len(Gs), card_max), dtype=torch.int, device=device)
-    for k in range(len(Gs)):
-        A_k, l = from_networkx_to_tensor(Gs[k], node_labels, node_label, device)
-        A[k, 0:A_k.shape[1]] = A_k[0]
-        labels[k, 0:l.shape[0]] = l
-    if (verbose):
-        print("size of A",  A.size())
-        print('adjacency matrices', A)
-        print('node labels', labels)
-        print('order of the graphs', card)
-        print(f"Number of edge labels {nb_edge_labels}")
-        print("Number of graph  = ", len(Gs))
-
     # Getting the GPU status :
     GPUtil.showUtilization()
 
@@ -115,11 +99,8 @@ if __name__ == "__main__":
                      node_label=node_label)
     model.to(device)
 
-    print(list(model.parameters()))
-    # sys.exit()
-
     InsDel, nodeSub, edgeSub, loss_valid_plt, loss_train_plt = GEDclassification(
-        model, Gs, A, card, labels, nb_epochs, device, y, rings_andor_fw)
+        model, Gs, nb_epochs, device, y, rings_andor_fw)
 
     print(loss_train_plt, loss_valid_plt)
     visualize(InsDel, nb_epochs, nodeSub, edgeSub, loss_valid_plt)

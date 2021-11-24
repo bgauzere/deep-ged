@@ -63,11 +63,9 @@ class GedLayer(nn.Module):
 
     def forward(self, graphs):
         '''
-        graph : tuple de deux graphes networkx
-        adjacenceMatrix : tuple de deux matrices d'adjacences
-        graphCard : tuple des deux tailles des graphes (TODO : a extraire de g1 et g2)
-        labels : ? (TODO)
-        TODO : il me semble qu'il suffirait de passer juste les deux networkx graphes
+
+        :param graphs: tuple de graphes networkx
+        :return: predicted GED between both graphs
         '''
 
         g1 = graphs[0]
