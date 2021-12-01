@@ -90,7 +90,7 @@ if __name__ == "__main__":
     device = dicoDevice[args.device]  
 
     # Init dataset
-    path_dataset = os.getenv('MAO_DATASET_PATH')
+    path_dataset = args.path
     
     Gs, y = loadDataset(path_dataset)
     # Gs = Gs[:24]
