@@ -1,4 +1,5 @@
 import os
+import sys
 import pickle as pkl
 import torch
 import GPUtil
@@ -73,25 +74,32 @@ def save_data(loss_valid_plt, loss_train_plt, InsDel, edgeSub,
 
 
 if __name__ == "__main__":
-    dicoDevice = {"cpu" : 'cpu', 'gpu' : 'cuda:0'}
-    dicoCalc = {0 : 'rings_sans_fw', 1 : 'sans_rings_avec_fw', 2 : 'rings_avec_fw' , 3 : 'sans_rings_sans_fw'}
+    dicoDevice = {"cpu": 'cpu', 'gpu': 'cuda:0'}
+    dicoCalc = {0: 'rings_sans_fw', 1: 'sans_rings_avec_fw',
+                2: 'rings_avec_fw', 3: 'sans_rings_sans_fw'}
     parser = argparse.ArgumentParser()
-    parser.add_argument("-v",'--verbosity', help="Print differents informations on the model", action="store_true")
-    parser.add_argument('device', help="Device to use : CPU/GPU" , choices=['cpu','gpu'])
-    parser.add_argument('-n','--normalize',help='Enable normalization',action='store_true')
-    parser.add_argument('path',help='Path to the dataset', type=str)
-    parser.add_argument('calculation', help='Select the calculation method : Rings only (0) / Frank Wolfe only (1) / both (2) / none (3) ',type=int,choices=[0,1,2,3])
-    parser.add_argument('labelNode',help='Labels for the nodes. Depends on the dataset file', nargs='?', type=str, default='label')
-    parser.add_argument('labelEdge',help='Labels for the edges. Depends on the dataset file', nargs='?',type=str, default='bond_type')
+    parser.add_argument(
+        "-v", '--verbosity', help="Print differents informations on the model", action="store_true")
+    parser.add_argument(
+        'device', help="Device to use : CPU/GPU", choices=['cpu', 'gpu'])
+    parser.add_argument('-n', '--normalize',
+                        help='Enable normalization', action='store_true')
+    parser.add_argument('path', help='Path to the dataset', type=str)
+    parser.add_argument(
+        'calculation', help='Select the calculation method : Rings only (0) / Frank Wolfe only (1) / both (2) / none (3) ', type=int, choices=[0, 1, 2, 3])
+    parser.add_argument('labelNode', help='Labels for the nodes. Depends on the dataset file',
+                        nargs='?', type=str, default='label')
+    parser.add_argument('labelEdge', help='Labels for the edges. Depends on the dataset file',
+                        nargs='?', type=str, default='bond_type')
     args = parser.parse_args()
-    
-    # Configuraiton du modele
-    rings_andor_fw = dicoCalc[args.calculation]  
-    device = dicoDevice[args.device]  
 
+    # Configuraiton du modele
+    rings_andor_fw = dicoCalc[args.calculation]
+    device = dicoDevice[args.device]
+    nb_epochs = 100
     # Init dataset
     path_dataset = args.path
-    
+
     Gs, y = loadDataset(path_dataset)
     # Gs = Gs[:24]
     # y = y[:24]
@@ -105,30 +113,8 @@ if __name__ == "__main__":
     node_labels, nb_edge_labels = build_node_dictionnary(
         Gs, node_label, edge_label)
     nb_labels = len(node_labels)
-
-    card = torch.tensor([G.order() for G in Gs]).to(device)
-    card_max = card.max()
-    A = torch.empty((len(Gs), card_max * card_max),
-                    dtype=torch.int, device=device)
-    labels = torch.empty((len(Gs), card_max), dtype=torch.int, device=device)
-    for k in range(len(Gs)):
-        A_k, l = from_networkx_to_tensor(Gs[k], node_labels, node_label)
-        A[k, 0:A_k.shape[1]] = A_k[0]
-        labels[k, 0:l.shape[0]] = l
-    
-    if (args.verbosity):
-        print("size of A",  A.size())
-        print('adjacency matrices', A)
-        print('node labels', labels)
-        print('order of the graphs', card)
-        print(f"Number of edge labels {nb_edge_labels}")
-        print("Number of graph  = ", len(Gs))
-
-    # Getting the GPU status :
-    GPUtil.showUtilization()
-
     model = GedLayer(nb_labels, nb_edge_labels, rings_andor_fw, normalize=args.normalize,
-                    node_label=node_label)
+                     node_label=node_label)
     model.to(device)
 
     nb_epochs = 50
@@ -139,4 +125,4 @@ if __name__ == "__main__":
     visualize(InsDel, nb_epochs, nodeSub, edgeSub, loss_valid_plt)
     # We save the losses into pickle files
     save_data(loss_valid_plt, loss_train_plt, InsDel, edgeSub,
-                nodeSub, rings_andor_fw)
+              nodeSub, rings_andor_fw)
