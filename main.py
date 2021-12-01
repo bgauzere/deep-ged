@@ -4,6 +4,7 @@ import torch
 import GPUtil
 import matplotlib.pyplot as plt
 import matplotlib
+from torch.utils.tensorboard import SummaryWriter
 
 from gklearn.utils.graphfiles import loadDataset
 
@@ -16,40 +17,45 @@ matplotlib.use('TkAgg')
 
 def visualize(InsDel, nb_iter, nodeSub, edgeSub,  loss_valid_plt):
     """
-    Plot l'évolution des couts ainsi que la loss
+    Plot l'évolution des couts ainsi que la loss dans le tensorboard
     """
-    # Plotting Node/Edge insertion/deletion costs
-    plt.figure(0)
-    plt.plot(InsDel[0:nb_iter, 0], label="node")
-    plt.plot(InsDel[0:nb_iter, 1], label="edge")
-    plt.title('Node/Edge insertion/deletion costs')
-    plt.legend()
+    writer = SummaryWriter()
+
+    for i in range(nb_iter):
+        writer.add_scalars('Node/Edge insertion/deletion costs', {'node':InsDel[i, 0],
+                                    'edge':InsDel[i, 1]}, i)
+
 
     # Plotting Node Substitutions
     # costs
-    plt.figure(1)
-    for k in range(nodeSub.shape[1]):
-        plt.plot(nodeSub[0:nb_iter, k])
-    plt.title('Node Substitutions costs')
+    for i in range(nb_iter):
+        data = {}
+        for k in range(nodeSub.shape[1]):
+            data["poids_"+str(k)] = nodeSub[i, k]
+        writer.add_scalars('Node Substitutions costs', data, i)
+
 
     # Plotting Edge Substitutions costs
-    plt.figure(2)
-    for k in range(edgeSub.shape[1]):
-        plt.plot(edgeSub[0:nb_iter, k])
-    plt.title('Edge Substitutions costs')
+    for i in range(nb_iter):
+        data = {}
+        for k in range(edgeSub.shape[1]):
+            data["poids_"+str(k)] = edgeSub[i, k]
+        writer.add_scalars('Node Substitutions costs', data, i)
+
 
     # Plotting the evolution of the train loss
-    plt.figure(3)
-    plt.plot(loss_train_plt)
-    plt.title('Evolution of the train loss')
+
+    for i in range(nb_iter):
+        writer.add_scalar('Evolution of the train loss',loss_train_plt[i] , i)
+
 
     # Plotting the evolution of the validation loss
-    plt.figure(4)
-    plt.plot(loss_valid_plt)
-    plt.title('Evolution of the valid loss')
+    for i in range(nb_iter):
+        writer.add_scalar('Evolution of the valid loss',loss_valid_plt[i] , i)
 
-    plt.show()
-    plt.close()
+
+    writer.flush()
+    writer.close()
 
 
 def save_data(loss_valid_plt, loss_train_plt, InsDel, edgeSub,
@@ -58,17 +64,17 @@ def save_data(loss_valid_plt, loss_train_plt, InsDel, edgeSub,
     Sauvegarde l'ensemble du learning aisni que les poids optimisés
     """
     torch.save(loss_valid_plt, 'pickle_files/'+rings_andor_fw +
-               '/loss_valid_plt', pickle_module=pkl)
+               '/loss/loss_valid_plt', pickle_module=pkl)
     torch.save(loss_train_plt, 'pickle_files/'+rings_andor_fw +
-               '/loss_train_plt', pickle_module=pkl)
+               '/loss/loss_train_plt', pickle_module=pkl)
 
     # We save the costs into pickle files
     torch.save(InsDel, 'pickle_files/'+rings_andor_fw +
-               '/InsDel', pickle_module=pkl)
+               '/trainedCost/InsDel', pickle_module=pkl)
     torch.save(edgeSub, 'pickle_files/'+rings_andor_fw +
-               '/edgeSub', pickle_module=pkl)
+               '/trainedCost/edgeSub', pickle_module=pkl)
     torch.save(nodeSub, 'pickle_files/'+rings_andor_fw +
-               '/nodeSub', pickle_module=pkl)
+               '/trainedCost/nodeSub', pickle_module=pkl)
 
 
 if __name__ == "__main__":

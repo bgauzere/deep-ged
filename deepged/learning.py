@@ -27,13 +27,14 @@ def save_first_costs(node_ins_del, edge_ins_del, node_costs, edge_costs, rings_a
     node_sub_init = node_costs
     edge_sub_init = edge_costs
     torch.save(node_ins_del_init, 'pickle_files/' +
-               rings_andor_fw + '/node_ins_del_init', pickle_module=pkl)
+               rings_andor_fw + '/initCost/node_ins_del_init', pickle_module=pkl)
     torch.save(edge_ins_del_init, 'pickle_files/' +
-               rings_andor_fw + '/edge_ins_del_init', pickle_module=pkl)
+               rings_andor_fw + '/initCost/edge_ins_del_init', pickle_module=pkl)
     torch.save(node_sub_init, 'pickle_files/' +
-               rings_andor_fw + '/node_sub_init', pickle_module=pkl)
+               rings_andor_fw + '/initCost/node_sub_init', pickle_module=pkl)
     torch.save(edge_sub_init, 'pickle_files/' +
-               rings_andor_fw + '/edge_sub_init', pickle_module=pkl)
+               rings_andor_fw + '/initCost/edge_sub_init', pickle_module=pkl)
+
 
 
 def GEDclassification(model, Gs, A, card, labels, nb_epochs, device, y, rings_andor_fw):
@@ -183,11 +184,11 @@ def GEDclassification(model, Gs, A, card, labels, nb_epochs, device, y, rings_an
     print(' Min cost for edge_sub = ', edge_sub_min)
     # Saving the minimum costs into pickle files
     torch.save(node_ins_del_min, 'pickle_files/' + rings_andor_fw +
-               '/node_ins_del_min', pickle_module=pkl)
+               '/minCost/node_ins_del_min', pickle_module=pkl)
     torch.save(edge_ins_del_min, 'pickle_files/' + rings_andor_fw +
-               '/edge_ins_del_min', pickle_module=pkl)
+               '/minCost/edge_ins_del_min', pickle_module=pkl)
     torch.save(node_sub_min, 'pickle_files/' + rings_andor_fw +
-               '/node_sub_min', pickle_module=pkl)
+               '/minCost/node_sub_min', pickle_module=pkl)
     torch.save(edge_sub_min, 'pickle_files/' + rings_andor_fw +
-               '/edge_sub_min', pickle_module=pkl)
+               '/minCost/edge_sub_min', pickle_module=pkl)
     return ins_del, node_sub, edge_sub,  loss_valid, loss_train
