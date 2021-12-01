@@ -113,6 +113,10 @@ if __name__ == "__main__":
     nb_labels = len(node_labels)
     model = GedLayer(nb_labels, nb_edge_labels, node_labels, rings_andor_fw, normalize=args.normalize,
                      node_label=node_label)
+
+    # Getting the GPU status :
+    GPUtil.showUtilization()
+
     InsDel, nodeSub, edgeSub, loss_valid_plt, loss_train_plt = GEDclassification(
         model, Gs, nb_epochs, device, y, rings_andor_fw)
 
