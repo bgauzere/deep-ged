@@ -10,6 +10,7 @@ import random
 import numpy as np
 import os
 
+from deepged.data_manager.dataset import DataSet
 
 def splitting(Gs, y, saving_path=None, already_divided=False):
     graph_idx = torch.arange(0, len(Gs), dtype=torch.int64)
@@ -37,25 +38,30 @@ def splitting(Gs, y, saving_path=None, already_divided=False):
                                                                               train_size=0.50, shuffle=True,
                                                                               stratify=valid_label)
 
-    # We make sure that the two sets contain distinct graphs
-    train_graph, valid_graph = different_sets(train_graph, valid_graph, Gs)
+    # # We make sure that the two sets contain distinct graphs
+    # train_graph, valid_graph = different_sets(train_graph, valid_graph, Gs)
+    #
+    # couples_train, yt = creating_couples_after_splitting(train_graph, y)
+    # couples_valid, yv = creating_couples_after_splitting(valid_graph, y)
+    # couples_test, yte = creating_couples_after_splitting(test_graph, y)
+    # yt = torch.tensor(yt)
+    # yv = torch.tensor(yv)
+    # yte = torch.tensor(yte)
+    # DatasetTrain = TensorDataset(couples_train, yt)
+    # DatasetValid = TensorDataset(couples_valid, yv)
+    # DatasetTest = TensorDataset(couples_test, yte)
 
-    couples_train, yt = creating_couples_after_splitting(train_graph, y)
-    couples_valid, yv = creating_couples_after_splitting(valid_graph, y)
-    couples_test, yte = creating_couples_after_splitting(test_graph, y)
-    yt = torch.tensor(yt)
-    yv = torch.tensor(yv)
-    yte = torch.tensor(yte)
-    DatasetTrain = TensorDataset(couples_train, yt)
-    DatasetValid = TensorDataset(couples_valid, yv)
-    DatasetTest = TensorDataset(couples_test, yte)
+    dataset_train = DataSet(train_graph, train_label)
+    dataset_valid = DataSet(valid_graph, valid_label)
+    dataset_test = DataSet(test_graph, test_label)
 
-    trainloader = torch.utils.data.DataLoader(DatasetTrain, batch_size=len(couples_train), shuffle=True, drop_last=True,
-                                              num_workers=0)  # 128, len(couples_train)
-    validationloader = torch.utils.data.DataLoader(DatasetValid, batch_size=len(couples_valid), drop_last=True,
-                                                   num_workers=0)  # 64,128,len(couples_test_train)
 
-    testloader = torch.utils.data.DataLoader(DatasetTest, batch_size=len(couples_test), drop_last=True,
+    trainloader = torch.utils.data.DataLoader(dataset_train,  batch_size=len(dataset_train), shuffle=True, drop_last=True,
+                                              num_workers=0)
+    validationloader = torch.utils.data.DataLoader(dataset_valid, batch_size=len(dataset_valid), shuffle=True, drop_last=True,
+                                              num_workers=0)
+
+    testloader = torch.utils.data.DataLoader(dataset_test, batch_size=len(dataset_test), drop_last=True,
                                              num_workers=0)  # 64,128,len(couples_test_train)
 
     print(len(trainloader), len(validationloader))
@@ -95,6 +101,7 @@ def different_sets(my_train_D, my_valid_D, Gs):
     return my_train_D, my_valid_D
 
 
+# Cette fonction semble est bugée
 def creating_couples_after_splitting(train_D, y):
     couples_train = []
 
@@ -106,6 +113,6 @@ def creating_couples_after_splitting(train_D, y):
     yt = np.ones(len(couples_train))
     for k in couples_train:
         if (y[k[0]] != y[k[1]]):
-            yt[k] = -1.0
+            yt[k] = -1.0  # Un tuple en index d'une liste ?????
 
     return torch.tensor(couples_train), yt
