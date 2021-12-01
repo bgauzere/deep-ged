@@ -70,3 +70,17 @@ Egalement, analyser les redondances entre main, evaluate et le package training
 
 # Tests
 Pour lancer les tests, installer pytest et faire python -m pytest depuis la racine
+
+# Execution
+
+Pour lancer le projet : `main.py` avec ses arguments de lancement suivant :
+
+* `-v` pour la verbosité
+* `-n` pour normaliser les valeurs de la GED
+* `device` permet a l'utilisateur de chosir la solution hardware de calcul (i.e : `cpu` ou `gpu`)
+* `path` permet de renter le chemin d'accès vers le dataset, plus précisément le fichier .ds
+* `approximation` permet de choisir la méthode d'approxiamtion (Frank Wolf ou Rings)
+* `labelNode` permet de choisir les labels pour les noeuds dépend du dataSet
+* `labelEdge` permet de choisir les labels pour les arrêtes dépend du dataSet
+
+Toutes ces informations son disponible si l'argument `-h` est donné.
