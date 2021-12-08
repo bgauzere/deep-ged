@@ -2,9 +2,15 @@ import numpy as np
 import torch
 import pickle as pkl
 from tqdm import tqdm
+from torch.utils.tensorboard import SummaryWriter
+
+from datetime import datetime
+
+
 
 from deepged.triangular_losses import TriangularConstraint as triangular_constraint
 from deepged.data_manager.data_split import splitting
+
 
 
 def normalize(ged):
@@ -58,6 +64,34 @@ def forward_data_model(loader, model, Gs, device):
 
     return ged_pred, labels
 
+def tensorboardExport(writer,epoch,train_loss, valid_loss, node_ins_del , edge_ins_del, node_costs, edge_costs ):
+    #Sauvegarde de la loss dans le tensorboard
+    writer.add_scalar('Evolution of the loss/train', train_loss, epoch)
+    #Sauvegarde de la loss dans le tensorboard
+    writer.add_scalar('Evolution of the loss/validation',  valid_loss  , epoch)
+
+    #Sauvegarde des couts d'insertion/ deletion dans le tensorboard
+    writer.add_scalars('Costs evolution/Node.Edge insertion.deletion costs', {'node':node_ins_del,
+                            'edge':edge_ins_del}, epoch)
+
+    data = {}
+    k = 0
+    for p in range(edge_costs.shape[0]):
+        for q in range(p + 1, edge_costs.shape[0]):
+            data["poids_"+str(k)] = edge_costs[p][q]
+            k+=1
+    writer.add_scalars('Costs evolution/Edge Substitutions costs', data, epoch)
+
+    data = {}
+    k = 0
+    for p in range(node_costs.shape[0]):
+        for q in range(p + 1, node_costs.shape[0]):
+            data["poids_"+str(k)] = node_costs[p][q]
+            k+=1
+    writer.add_scalars('Costs evolution/Node Substitutions costs', data, epoch)
+
+    writer.flush()
+
 
 def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw):
     """
@@ -68,6 +102,10 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw):
 
     trainloader, validationloader, test_loader = splitting(
         Gs, y, saving_path=rings_andor_fw, already_divided=False)
+
+    now = datetime.now()
+    writer = SummaryWriter("runs/data_" +now.strftime("%d-%m_%H-%M-%S") )
+
 
     #criterion = torch.nn.HingeEmbeddingLoss(margin=1.0, reduction='mean')
     criterion = torch.nn.HingeEmbeddingLoss()
@@ -108,6 +146,9 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw):
         loss_train[epoch] = current_train_loss
         print(f"loss.item of the train = {current_train_loss}")
 
+
+
+
         # Fin for Batch
         # Getting the costs of the first iteration, to compare later
         if epoch == 0:
@@ -141,9 +182,15 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw):
 
             # Getting the validation loss
             loss_valid[epoch] = current_valid_loss
+
+
             # Getting edges and nodes Insertion/Deletion costs
             ins_del[epoch][0] = node_ins_del.item()
             ins_del[epoch][1] = edge_ins_del.item()
+
+
+        tensorboardExport(writer,epoch,current_train_loss, current_valid_loss, node_ins_del.item() , edge_ins_del.item(),node_costs, edge_costs )
+
             # TODO : a pythoniser
         k = 0
         for p in range(node_costs.shape[0]):
@@ -172,6 +219,10 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw):
         del loss
         # training.plot.plot("pickle_files/", rings_andor_fw)
         # torch.cuda.empty_cache()
+
+    # Fermeture du tensorboard
+    writer.close()
+
 
     print('iter and min_valid_loss = ', iter_min_valid_loss, min_valid_loss)
     print(' Min cost for node_ins_del = ', node_ins_del_min)

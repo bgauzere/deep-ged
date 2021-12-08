@@ -84,3 +84,7 @@ Pour lancer le projet : `main.py` avec ses arguments de lancement suivant :
 * `labelEdge` permet de choisir les labels pour les arrêtes dépend du dataSet
 
 Toutes ces informations son disponible si l'argument `-h` est donné.
+
+# Tensorboard 
+
+Pour lancer le tensorboard : `tensorboard --logdir runs` 
