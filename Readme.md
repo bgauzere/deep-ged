@@ -3,8 +3,6 @@
 `pipenv install`
 * avec requirements.txt :
 ` pip install -r requirements.txt`
-## Configuration Dataset
- * `export MAO_DATASET_PATH=/path/to/dataset.ds`
 
 # Structure du projet 
 <pre>
