@@ -37,9 +37,6 @@ def splitting(Gs, y, saving_path=None, already_divided=False):
                                                                               train_size=0.50, shuffle=True,
                                                                               stratify=valid_label)
 
-    # We make sure that the two sets contain distinct graphs
-    train_graph, valid_graph = different_sets(train_graph, valid_graph, Gs)
-
     couples_train, yt = creating_couples_after_splitting(train_graph, y)
     couples_valid, yv = creating_couples_after_splitting(valid_graph, y)
     couples_test, yte = creating_couples_after_splitting(test_graph, y)
@@ -79,20 +76,6 @@ def splitting(Gs, y, saving_path=None, already_divided=False):
                    '/test_label', pickle_module=pkl)
 
     return trainloader, validationloader, testloader
-
-
-# Verifying that the two sets contain different graphs
-
-def different_sets(my_train_D, my_valid_D, Gs):
-    cp = my_valid_D
-    for i in range(len(my_valid_D)):
-        if my_valid_D[i] in my_train_D:
-            tmp = random.choice(Gs)
-            if tmp not in my_train_D:
-                cp[i] = tmp
-    my_valid_D = cp
-
-    return my_train_D, my_valid_D
 
 
 def creating_couples_after_splitting(train_D, y):
