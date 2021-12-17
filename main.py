@@ -42,8 +42,8 @@ def visualize(InsDel, nb_iter, nodeSub, edgeSub,  loss_valid_plt):
 
     # Plotting the evolution of the train loss
     plt.figure(3)
-    plt.plot(loss_train_plt)
     plt.title('Evolution of the train loss')
+    plt.plot(loss_train_plt)
 
     # Plotting the evolution of the validation loss
     plt.figure(4)
@@ -74,9 +74,9 @@ def save_data(loss_valid_plt, loss_train_plt, InsDel, edgeSub,
 
 
 if __name__ == "__main__":
-    dicoDevice = {"cpu": 'cpu', 'gpu': 'cuda:0'}
-    dicoCalc = {0: 'rings_sans_fw', 1: 'sans_rings_avec_fw',
-                2: 'rings_avec_fw', 3: 'sans_rings_sans_fw'}
+    dico_device = {"cpu": 'cpu', 'gpu': 'cuda:0'}
+    dico_calc = {0: 'rings_sans_fw', 1: 'sans_rings_avec_fw',
+                 2: 'rings_avec_fw', 3: 'sans_rings_sans_fw'}
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-v", '--verbosity', help="Print differents informations on the model", action="store_true")
@@ -94,13 +94,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Configuraiton du modele
-    rings_andor_fw = dicoCalc[args.calculation]
-    device = dicoDevice[args.device]
-    nb_epochs = 100
+    rings_andor_fw = dico_calc[args.calculation]
+    device = dico_device[args.device]
+    nb_epochs = 50
     # Init dataset
     path_dataset = args.path
 
     Gs, y = loadDataset(path_dataset)
+
     # Utile pour rings ? du coup on a un cout pour chaque extended_label
 
     for g in Gs:
@@ -115,13 +116,14 @@ if __name__ == "__main__":
                      node_label=node_label)
 
     # Getting the GPU status :
-    GPUtil.showUtilization()
-
+    if(args.verbosity):
+        GPUtil.showUtilization()
     InsDel, nodeSub, edgeSub, loss_valid_plt, loss_train_plt = GEDclassification(
-        model, Gs, nb_epochs, device, y, rings_andor_fw)
+        model, Gs, nb_epochs, device, y, rings_andor_fw, verbosity=args.verbosity)
 
-    print(loss_train_plt, loss_valid_plt)
-    visualize(InsDel, nb_epochs, nodeSub, edgeSub, loss_valid_plt)
+    if(args.verbosity):
+        print(loss_train_plt, loss_valid_plt)
+        visualize(InsDel, nb_epochs, nodeSub, edgeSub, loss_valid_plt)
     # We save the losses into pickle files
     save_data(loss_valid_plt, loss_train_plt, InsDel, edgeSub,
               nodeSub, rings_andor_fw)

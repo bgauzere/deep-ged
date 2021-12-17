@@ -82,12 +82,11 @@ class GedLayer(nn.Module):
             A_g1, A_g2, [n, m], [labels_1, labels_2], cns, ces, cndl, cedl)
         c = torch.diag(C)
         D = C - torch.eye(C.shape[0]) * c
-        S = svd.eps_assign2(
-            torch.exp(-.5*c.view(n+1, m+1)), 10).view((n+1)*(m+1), 1)
 
+        S = svd.eps_assign2(svd.from_cost_to_similarity(c.view(n+1, m+1)),
+                            10).view((n+1)*(m+1), 1)
         normalize_factor = 1.0
         if self.normalize:
-
             nb_edge1 = (A_g1[0:n * n] != torch.zeros(n * n)).int().sum()
             nb_edge2 = (A_g2[0:m * m] != torch.zeros(m * m)).int().sum()
             normalize_factor = cndl * (n + m) + cedl * (nb_edge1 + nb_edge2)
@@ -136,7 +135,6 @@ class GedLayer(nn.Module):
         Retourne une matrice carrée de taile (n+1) * (m +1) contenant les couts sur les noeuds et les aretes
         TODO : a analyser, tester et documenter
         '''
-
         n = card[0]
         m = card[1]
 
@@ -156,7 +154,7 @@ class GedLayer(nn.Module):
                 for l in range(self.nb_edge_labels):
                     if k != l:
                         C.add_(self.matrix_edge_subst(A1, A2, k + 1,
-                               l + 1).multiply_(edge_costs[k][l]))
+                                                      l + 1).multiply_(edge_costs[k][l]))
 
         # C=cost[3]*torch.tensor(np.array([ [  k!=l and A1[k//(m+1),l//(m+1)]^A2[k%(m+1),l%(m+1)] for k in range((n+1)*(m+1))] for l in range((n+1)*(m+1))]),device=self.device)
 
