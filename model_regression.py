@@ -28,8 +28,8 @@ class RegressGedLayer(nn.Module):
             ged_Array[i] = ged
 
         # print(torch.tensor(ged_Array))
-        # return self.knnLayer(ged_Array)
-        return ged_Array
+        return self.knnLayer(ged_Array)
+        # return ged_Array
 
 
 
@@ -91,9 +91,23 @@ class KnnRegressFromGED(nn.Module):
     def forward(self, ged):
 
 
+        ged = torch.nn.functional.normalize(ged , dim=0)
+
+
         val, ind = torch.topk(ged, self.k, dim=0, largest=False)
 
-        return torch.sum(self.y[ind], 0)/self.k
+
+        sim = 1.0/(val+1.0)
+        # print(sim)
+#        m=torch.nn.Softmax(dim=1)
+#        sim=m(-val)
+#        print('y=',self.y[ind])
+#        print('val=',val)
+#        print('sim=',sim)
+#        print('res=',torch.sum(sim*self.y[ind],1)/torch.sum(sim,1))
+        
+        return torch.sum(sim*self.y[ind], 0)/torch.sum(sim, 0)
+        # return torch.sum(self.y[ind], 0)/self.k
 
 
 

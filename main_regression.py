@@ -63,8 +63,7 @@ if __name__ == "__main__":
     # path_dataset = args.path
 
 
-    [train_graph, valid_graph, train_label, valid_label] = train_test_split(Gs, y, test_size=0.50,
-                                                                                    train_size=0.50, shuffle=True)
+    [train_graph, valid_graph, train_label, valid_label] = train_test_split(Gs, y, test_size=0.10, shuffle=True)
 
 
 
@@ -108,7 +107,7 @@ if __name__ == "__main__":
     for epoch in range(1000):
         for graphs_idx, temp in trainloader:
             optimizer.zero_grad()
-            ged_pred = torch.zeros(len(graphs_idx))
+
             pred_val = torch.zeros(len(graphs_idx))
              # forward
 
@@ -116,16 +115,18 @@ if __name__ == "__main__":
 
 
 
-             
+
             with torch.set_grad_enabled(True):
                 for i in range(len(graphs_idx)):
+
                     pred_val[i] =  model(valid_graph[graphs_idx[i]])
 
             loss  = criterion(pred_val ,temp)
+            print(torch.nn.functional.l1_loss(pred_val ,temp))
             loss.backward()
 
             optimizer.step()
-            print(loss)
+            # print(loss)
 
 
 
