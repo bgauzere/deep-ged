@@ -83,8 +83,8 @@ class GedLayer(nn.Module):
         c = torch.diag(C)
         D = C - torch.eye(C.shape[0]) * c
 
-        S = svd.eps_assign2(svd.from_cost_to_similarity(c.view(n+1, m+1)),
-                            10).view((n+1)*(m+1), 1)
+        S = svd.eps_assign2(svd.from_cost_to_similarity(
+            c.view(n+1, m+1)), 10).view((n+1)*(m+1), 1)
         normalize_factor = 1.0
         if self.normalize:
             nb_edge1 = (A_g1[0:n * n] != torch.zeros(n * n)).int().sum()

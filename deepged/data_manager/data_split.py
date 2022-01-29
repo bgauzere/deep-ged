@@ -47,7 +47,7 @@ def splitting(Gs, y, saving_path=None, already_divided=False):
     DatasetValid = TensorDataset(couples_valid, yv)
     DatasetTest = TensorDataset(couples_test, yte)
 
-    trainloader = torch.utils.data.DataLoader(DatasetTrain, batch_size=len(couples_train), shuffle=True, drop_last=True,
+    trainloader = torch.utils.data.DataLoader(DatasetTrain, batch_size=len(couples_train), shuffle=False, drop_last=True,
                                               num_workers=0)  # 128, len(couples_train)
     validationloader = torch.utils.data.DataLoader(DatasetValid, batch_size=len(couples_valid), drop_last=True,
                                                    num_workers=0)  # 64,128,len(couples_test_train)
@@ -84,15 +84,21 @@ def creating_couples_after_splitting(train_D, y):
     ! réservé à la classif !
     '''
     couples_train = []
-
-    for i, g1_idx in enumerate(train_D):
-        for j, g2_idx in enumerate(train_D):
-            n = g1_idx
-            m = g2_idx
-            couples_train.append([n, m])
+    class1 = [k for k in train_D if y[k] == 1]
+    class0 = [k for k in train_D if y[k] == 0]
+    nb_class1 = len(class1)
+    nb_class0 = min(len(class0), int((nb_class1-1)/2))
+    new_train = class1+class0[0:nb_class0]
+    for i, elt1 in enumerate(new_train[0:nb_class1]):
+        for elt2 in new_train[i+1:]:
+            couples_train.append([elt1, elt2])
+    # for i, g1_idx in enumerate(train_D):
+    #     for j, g2_idx in enumerate(train_D):
+    #         n = g1_idx
+    #         m = g2_idx
+    #         couples_train.append([n, m])
     yt = np.ones(len(couples_train))
     for k, [g1_idx, g2_idx] in enumerate(couples_train):
         if (y[g1_idx] != y[g2_idx]):
             yt[k] = -1.0
-
     return torch.tensor(couples_train), yt
