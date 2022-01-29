@@ -47,7 +47,7 @@ def splitting(Gs, y, saving_path=None, already_divided=False):
     DatasetValid = TensorDataset(couples_valid, yv)
     DatasetTest = TensorDataset(couples_test, yte)
 
-    trainloader = torch.utils.data.DataLoader(DatasetTrain, batch_size=len(couples_train), shuffle=False, drop_last=True,
+    trainloader = torch.utils.data.DataLoader(DatasetTrain, batch_size=len(couples_train), shuffle=True, drop_last=True,
                                               num_workers=0)  # 128, len(couples_train)
     validationloader = torch.utils.data.DataLoader(DatasetValid, batch_size=len(couples_valid), drop_last=True,
                                                    num_workers=0)  # 64,128,len(couples_test_train)
