@@ -44,13 +44,13 @@ class GedLayer(nn.Module):
         nb_edge_pair_label = int(
             self.nb_edge_labels * (self.nb_edge_labels - 1) / 2)
 
-        nweights = (1e-2) * (1.1 *
-                             np.random.rand(nb_node_pair_label + 1))
-        nweights[-1] = .03
+        nweights = (1e-2)*(1.0+.1 *
+                           np.random.rand(nb_node_pair_label + 1))
+        nweights[-1] = 3.0e-2
 
-        eweights = (1e-2) * (1.1 *
-                             np.random.rand(nb_edge_pair_label + 1))
-        eweights[-1] = .02
+        eweights = (1e-2)*(1.0+.1 *
+                           np.random.rand(nb_edge_pair_label + 1))
+        eweights[-1] = 2.0e-2
 
         # nweights = np.multiply(nweights, 100)
         # eweights = np.multiply(eweights, 100)
@@ -83,8 +83,14 @@ class GedLayer(nn.Module):
         c = torch.diag(C)
         D = C - torch.eye(C.shape[0]) * c
 
-        S = svd.eps_assign2(svd.from_cost_to_similarity(
-            c.view(n+1, m+1)), 10).view((n+1)*(m+1), 1)
+        # x0 = svd.eps_assign2(svd.from_cost_to_similarity_exp(c.view(n+1, m+1)),
+        #                      10).view((n+1)*(m+1), 1)
+
+        S = svd.eps_assign2(torch.exp(-.5*c.view(n+1, m+1)),
+                            10).view((n+1)*(m+1), 1)
+        if self.rings_andor_fw == 'sans_rings_avec_fw':
+            S = svd.franck_wolfe(S, D, c, 5, 10, n, m)
+
         normalize_factor = 1.0
         if self.normalize:
             nb_edge1 = (A_g1[0:n * n] != torch.zeros(n * n)).int().sum()

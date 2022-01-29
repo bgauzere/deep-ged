@@ -10,7 +10,7 @@ def compute_grad_V(U, S, V, grad_V):
     S = torch.eye(N) * S.reshape((N, 1))  # .cpu(S.get_device()) après le eye
 
     inner = K.T * (V.T @ grad_V)
-    #print('K=',K,'max K=',K.max())
+    # print('K=',K,'max K=',K.max())
     # print('gradV=',grad_V)
 
     inner = (inner + inner.T) / 2.0
@@ -40,27 +40,27 @@ def svd_grad_K(S):
     K = (1/K_neg)*rm_diag
 
     # TODO Look into it
-    #eps = torch.ones((N, N)) * 10**(-4)
-    ##eps = eps.cpu(S.get_device())
-    #max_diff = torch.max(torch.abs(diff), eps)
-    #sign_diff = torch.sign(diff)
+    # eps = torch.ones((N, N)) * 10**(-4)
+    # eps = eps.cpu(S.get_device())
+    # max_diff = torch.max(torch.abs(diff), eps)
+    # sign_diff = torch.sign(diff)
 
-    #K_neg = sign_diff * max_diff
+    # K_neg = sign_diff * max_diff
     # print('S=',S)
     # print('K_neg=',K_neg)
     # print('plus=',plus)
     # print('diff=',diff)
     # gaurd the matrix inversion
-    #K_neg[torch.arange(N), torch.arange(N)] = 10 ** (-5)
-    #K_neg = 1 / K_neg
-    #K_pos = 1 / plus
-    #print('max K_neg',K_neg.max().item(),'mas K_pos=',K_pos.max().item())
+    # K_neg[torch.arange(N), torch.arange(N)] = 10 ** (-5)
+    # K_neg = 1 / K_neg
+    # K_pos = 1 / plus
+    # print('max K_neg',K_neg.max().item(),'mas K_pos=',K_pos.max().item())
     if(not np.isfinite(K.max().item())):
         print('min diff', torch.abs(max_diff).min().item(), 'inv=', 1.0 /
               torch.abs(max_diff).min().item(), 'min |K_neg|', torch.abs(K_neg).min().item())
     # ones = torch.ones((N, N))#.cpu(S.get_device())
     # rm_diag = ones - torch.eye(N)#.cpu(S.get_device())
-    #K = K_neg * K_pos * rm_diag
+    # K = K_neg * K_pos * rm_diag
 
     return K
 
@@ -99,7 +99,7 @@ class CustomSVD(Function):
         U, S, V = ctx.saved_tensors
 
         grad_input = compute_grad_V(U, S, V, grad_V)
-        #print('grad de U et S:',grad_U.max(),grad_S.max())
+        # print('grad de U et S:',grad_U.max(),grad_S.max())
         return grad_input
 
 
@@ -117,10 +117,10 @@ def compute_grad_MA(U, S, V, grad_V):
     inner[:, 0] = S*inner_vec
     inner[0, :] = S[0]*inner_vec.T
 
-    #print('K=',K,'max K=',K.max())
+    # print('K=',K,'max K=',K.max())
     # print('gradV=',grad_V)
 
-    #inner = (inner + inner.T) / 2.0
+    # inner = (inner + inner.T) / 2.0
     # print('inner=',inner)
     return U @ inner @ V.T
 
@@ -150,7 +150,7 @@ def svd_grad_K_MA(S):
               torch.abs(max_diff).min().item(), 'min |K_neg|', torch.abs(K_neg).min().item())
     # ones = torch.ones((N, N))#.cpu(S.get_device())
     # rm_diag = ones - torch.eye(N)#.cpu(S.get_device())
-    #K = K_neg * K_pos * rm_diag
+    # K = K_neg * K_pos * rm_diag
 
     return K
 
@@ -198,7 +198,7 @@ class CustomMajorAxis(Function):
         Up = V.T[ind]
         Vp = Up.T
         ctx.save_for_backward(Up, Sp, Vp)
-        #ctx.save_for_backward(U, S, V)
+        # ctx.save_for_backward(U, S, V)
         return Vp[:, 0]
 
     @staticmethod
@@ -287,8 +287,6 @@ def eps_assign2(S, nb_iter):
         if i >= 1:
             converged = (norm_r <= 1e-2) and (norm_c <= 1e-2)
         i += 1
-#        print('r=',r)
-#        print('c=',c)
     return torch.diag(r)@S@torch.diag(c)
 
 
@@ -318,6 +316,21 @@ def from_cost_to_similarity(C):
     return simplify_matrix(S-C)
 
 
+def from_cost_to_similarity_exp(C):
+    n, m = C.shape
+    ones_m = torch.ones((1, m))
+    ones_n = torch.ones((n, 1))
+    minL, _ = C.min(dim=1)
+    minL[-1] = 0.0
+    Cp = C-(minL.view(n, 1)@ones_m)
+    T = min(10, 7.0*torch.log(torch.tensor(10.0))/torch.max(Cp))
+    minC, _ = Cp.min(dim=0)
+    minC[-1] = 0.0
+    Cp = Cp-ones_n@minC.view(1, m)
+    Cp = Cp/torch.max(Cp)
+    return torch.exp(-T*Cp)
+
+
 def franck_wolfe(x0, D, c, offset, kmax, n, m):
     k = 0
     converged = False
@@ -325,22 +338,11 @@ def franck_wolfe(x0, D, c, offset, kmax, n, m):
     T = 1.0
     dT = .5
     nb_iter = 40
-    ones_m = torch.ones((1, m+1), device=D.device)
-    ones_n = torch.ones((n+1, 1), device=D.device)
     while (not converged) and (k <= kmax):
         Cp = (x.T@D+c).view(n+1, m+1)
-#        minL,_=Cp.min(dim=1)
-#        minL[-1]=0.0
-#        Cp=Cp-(minL.view(n+1,1)@ones_m)
-#        T=min(10,7.0*torch.log(torch.tensor(10.0))/torch.max(Cp))
-#        minC,_=Cp.min(dim=0)
-#        minC[-1]=0.0
-#        Cp=Cp-ones_n@minC.view(1,m+1)
-#        Cp=Cp/torch.max(Cp)
-
-#        b=eps_assign2(torch.exp(-T*Cp),nb_iter).view((n+1)*(m+1),1)
-        b = eps_assign2(from_cost_to_similarity(Cp),
+        b = eps_assign2(from_cost_to_similarity_exp(Cp),
                         nb_iter).view((n+1)*(m+1), 1)
+        # breakpoint()
         alpha = x.T@D@(b-x)+c.T@(b-x)
 #        print('M=',torch.exp(-T*Cp))
 #        print('b=',b.view(n+1,m+1))
@@ -365,7 +367,7 @@ def franck_wolfe(x0, D, c, offset, kmax, n, m):
         else:
             t = min(-alpha/(2*beta), 1.0)
         # if .5*x.T@D@x+c.T@x > .5*b.T@D@b+c.T@b:
-            #print('last value:',.5*b.T@D@b+c.T@b)
+            # print('last value:',.5*b.T@D@b+c.T@b)
          #   xp=b
 
 

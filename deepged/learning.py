@@ -106,7 +106,7 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw, verbosity
     writer = SummaryWriter("runs/data_" + now.strftime("%d-%m_%H-%M-%S"))
 
     #criterion = torch.nn.HingeEmbeddingLoss(margin=1.0, reduction='mean')
-    criterion = torch.nn.HingeEmbeddingLoss()
+    criterion = torch.nn.HingeEmbeddingLoss(reduction='sum')
     criterion_tri = triangular_constraint()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)  # , lr=1e-3
 
@@ -177,8 +177,9 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw, verbosity
 
         if (verbosity):
             print(
-                f'Iteration {epoch + 1} \t\t Training Loss: {loss_train[epoch]}')
-            print(f"loss.item of the valid={current_valid_loss}")
+                f"Iteration {epoch + 1} \t\t Training Loss: {loss_train[epoch]} - {loss_train[epoch]/len(train_labels)}")
+            print(
+                f"loss.item of the valid={current_valid_loss} - {current_valid_loss/len(valid_labels)}")
 
         tensorboardExport(writer, epoch, current_train_loss, current_valid_loss,
                           node_ins_del.item(), edge_ins_del.item(), node_costs, edge_costs)
