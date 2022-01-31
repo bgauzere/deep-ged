@@ -54,8 +54,7 @@ def visualize(InsDel, nb_iter, nodeSub, edgeSub,  loss_valid_plt):
     plt.close()
 
 
-def save_data(loss_valid_plt, loss_train_plt, InsDel, edgeSub,
-              nodeSub, rings_andor_fw):
+def save_data(loss_valid_plt, loss_train_plt, InsDel, edgeSub, nodeSub, rings_andor_fw):
     """
     Sauvegarde l'ensemble du learning aisni que les poids optimisés
     """
@@ -74,22 +73,24 @@ def save_data(loss_valid_plt, loss_train_plt, InsDel, edgeSub,
 
 
 if __name__ == "__main__":
+
     dico_device = {"cpu": 'cpu', 'gpu': 'cuda:0'}
     dico_calc = {0: 'rings_sans_fw', 1: 'sans_rings_avec_fw',
                  2: 'rings_avec_fw', 3: 'sans_rings_sans_fw'}
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-v", '--verbosity', help="Print differents informations on the model", action="store_true")
-    parser.add_argument(
-        'device', help="Device to use : CPU/GPU", choices=['cpu', 'gpu'])
-    parser.add_argument('-n', '--normalize',
-                        help='Enable normalization', action='store_true')
     parser.add_argument('path', help='Path to the dataset', type=str)
     parser.add_argument(
-        'calculation', help='Select the calculation method : Rings only (0) / Frank Wolfe only (1) / both (2) / none (3) ', type=int, choices=[0, 1, 2, 3])
-    parser.add_argument('labelNode', help='Labels for the nodes. Depends on the dataset file',
-                        nargs='?', type=str, default='label')
-    parser.add_argument('labelEdge', help='Labels for the edges. Depends on the dataset file',
+        "-v", '--verbosity', help="Print differents informations on the model", action="store_true", default=False)
+    parser.add_argument("-d",
+                        '--device', help="Device to use : CPU/GPU", choices=['cpu', 'gpu'], default='cpu')
+    parser.add_argument('-n', '--normalize',
+                        help='Enable normalization', action='store_true', default=True)
+
+    parser.add_argument("-c",
+                        '--calculation', help='Select the calculation method : Rings only (0) / Frank Wolfe only (1) / both (2) / none (3) ', type=int, choices=[0, 1, 2, 3], default=3)
+    parser.add_argument("-ln", '--label_node', help='Labels for the nodes. Depends on the dataset file',
+                        nargs='?', type=str, default='extended_label')
+    parser.add_argument("-le", '--label_edge', help='Labels for the edges. Depends on the dataset file',
                         nargs='?', type=str, default='bond_type')
     args = parser.parse_args()
 
@@ -97,21 +98,20 @@ if __name__ == "__main__":
     rings_andor_fw = dico_calc[args.calculation]
     device = dico_device[args.device]
     nb_epochs = 50
+
     # Init dataset
     path_dataset = args.path
+    if (args.verbosity):
+        print(f"Paramètres: {args}")
 
     Gs, y = loadDataset(path_dataset)
-    # Gs = Gs[:30]
-    # y = y[:30]
-    # breakpoint()
 
     # Utile pour rings ? du coup on a un cout pour chaque extended_label
-
     for g in Gs:
         compute_extended_labels(g, label_node="label")
 
-    node_label = args.labelNode
-    edge_label = args.labelEdge
+    node_label = args.label_node
+    edge_label = args.label_edge
     node_labels, nb_edge_labels = build_node_dictionnary(
         Gs, node_label, edge_label)
     nb_labels = len(node_labels)
@@ -121,6 +121,7 @@ if __name__ == "__main__":
     # Getting the GPU status :
     if(args.verbosity):
         GPUtil.showUtilization()
+
     InsDel, nodeSub, edgeSub, loss_valid_plt, loss_train_plt = GEDclassification(
         model, Gs, nb_epochs, device, y, rings_andor_fw, verbosity=args.verbosity)
 
