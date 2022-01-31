@@ -1,3 +1,4 @@
+import matplotlib.gridspec as gridspec
 import os
 import sys
 import pickle as pkl
@@ -16,74 +17,83 @@ from deepged.utils import from_networkx_to_tensor
 matplotlib.use('TkAgg')
 
 
-def visualize(cost_ins_del, cost_node_sub, cost_edge_sub,  loss_train, loss_valid):
+def visualize(cost_ins_del, cost_node_sub, cost_edge_sub,
+              loss_train, loss_valid,
+              directory, verbosity=True):
     """
     Plot l'évolution des couts ainsi que la loss
     """
-    # plt.figure(fig
-    # Plotting Node/Edge insertion/deletion costs
-    plt.figure(0)
-    plt.plot(InsDel[0:nb_iter, 0], label="node")
-    plt.plot(InsDel[0:nb_iter, 1], label="edge")
-    plt.title('Node/Edge insertion/deletion costs')
-    plt.legend()
+    p = plt.rcParams
+    p["figure.figsize"] = 7, 7
+    p["font.sans-serif"] = ["Roboto Condensed"]
+    p["font.weight"] = "light"
+    p["ytick.minor.visible"] = True
+    p["xtick.minor.visible"] = True
+    p["axes.grid"] = True
+    p["grid.color"] = "0.5"
+    p["grid.linewidth"] = 0.5
+    fig = plt.figure(constrained_layout=True, figsize=(18, 6))  #
+    nrows, ncols = 2, 4
+    gspec = gridspec.GridSpec(ncols=ncols, nrows=nrows, figure=fig)
 
-    # Plotting Node Substitutions
-    # costs
-    plt.figure(1)
-    for k in range(nodeSub.shape[1]):
-        plt.plot(nodeSub[0:nb_iter, k])
-    plt.title('Node Substitutions costs')
+    ax = plt.subplot(gspec[:, :2])
+    color = 'tab:red'
+    ax.set_xlabel("Epochs")
+    ax.set_ylabel("Train set loss value", color=color)
+    ax.plot(loss_train, label="Loss on train set", color=color)
+    ax.tick_params(axis='y', labelcolor=color)
+    ax_2 = ax.twinx()
+    color = 'tab:blue'
+    ax_2.plot(loss_valid, label="Loss on validation set", color=color)
+    ax_2.tick_params(axis='y', labelcolor=color)
+    ax_2.set_ylabel("Validation set loss value", color=color)
+    # ax_2.legend()
+    ax.set_title("Losses", family="Roboto", weight=500)
 
-    # Plotting Edge Substitutions costs
-    plt.figure(2)
-    for k in range(edgeSub.shape[1]):
-        plt.plot(edgeSub[0:nb_iter, k])
-    plt.title('Edge Substitutions costs')
+    ax = plt.subplot(gspec[0, 2])
+    ax.set_xlabel("Epochs")
+    ax.set_ylabel("Costs")
+    ax.plot(cost_ins_del[:, 0], label="node ins/del cost ")
+    ax.plot(cost_ins_del[:, 1], label="edge ins/del cost ")
+    ax.legend()
+    ax.set_title("Ins/Del costs", family="Roboto", weight=500)
 
-    # Plotting the evolution of the train loss
-    plt.figure(3)
-    plt.title('Evolution of the train loss')
-    plt.plot(loss_train_plt)
+    ax = plt.subplot(gspec[0, 3])
+    ax.set_xlabel("Epochs")
+    ax.set_ylabel("Costs")
+    ax.plot(cost_edge_sub)
+    ax.set_title("Edge sub costs", family="Roboto", weight=500)
 
-    # Plotting the evolution of the validation loss
-    plt.figure(4)
-    plt.plot(loss_valid_plt)
-    plt.title('Evolution of the valid loss')
+    ax = plt.subplot(gspec[1, 2:])
+    ax.set_xlabel("Epochs")
+    ax.set_ylabel("Costs")
+    ax.plot(cost_node_sub)
+    ax.set_title("Node sub costs", family="Roboto", weight=500)
 
-    plt.show()
-    plt.close()
+    if (verbosity):
+        plt.show()
+    if directory is not None:
+        fig.savefig(os.path.join(directory, "plot.pdf"))
 
 
-def save_data(loss_valid_plt, loss_train_plt,
-              ins_del, edge_sub, node_sub,  args, directory=None):
+def save_data(directory, loss_valid, loss_train,
+              cost_ins_del, cost_edge_sub, cost_node_sub,
+              args):
     """
     Sauvegarde l'ensemble du learning aisni que les poids optimisés
     """
-    if (directory is None):
-        default_directory = "save_runs"
-        if(not os.path.isdir(default_directory)):
-            os.mkdir(default_directory)
-        time_stamp = datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
-        path = os.path.join(default_directory, time_stamp)
-        os.mkdir(path)
-        directory = path
-    else:
-        if (not os.path.isdir(directory)):
-            raise FileNotFoundError
-    breakpoint()
 
-    torch.save(loss_valid_plt, os.path.join(
-        directory, "loss_valid_plt"), pickle_module=pkl)
-    torch.save(loss_train_plt, os.path.join(
-        directory, "loss_train_plt"), pickle_module=pkl)
+    torch.save(loss_valid, os.path.join(
+        directory, "loss_valid"), pickle_module=pkl)
+    torch.save(loss_train, os.path.join(
+        directory, "loss_train"), pickle_module=pkl)
 
     # We save the costs into pickle files
-    torch.save(InsDel, os.path.join(
+    torch.save(cost_ins_del, os.path.join(
         directory, "cost_ins_del"), pickle_module=pkl)
-    torch.save(edge_sub, os.path.join(
+    torch.save(cost_edge_sub, os.path.join(
         directory, "cost_edge_sub"), pickle_module=pkl)
-    torch.save(node_sub, os.path.join(
+    torch.save(cost_node_sub, os.path.join(
         directory, "cost_node_sub"), pickle_module=pkl)
     with open(os.path.join(directory, "arguments.txt"), "w") as f:
         f.write(args)
@@ -109,12 +119,14 @@ if __name__ == "__main__":
                         nargs='?', type=str, default='extended_label')
     parser.add_argument("-le", '--label_edge', help='Labels for the edges. Depends on the dataset file',
                         nargs='?', type=str, default='bond_type')
+    parser.add_argument('--nb_epochs', help="Nb of epochs",
+                        type=int, default=50)
     args = parser.parse_args()
 
     # Configuraiton du modele
     rings_andor_fw = dico_calc[args.calculation]
     device = dico_device[args.device]
-    nb_epochs = 50
+    nb_epochs = args.nb_epochs
 
     # Init dataset
     path_dataset = args.path
@@ -142,10 +154,21 @@ if __name__ == "__main__":
     cost_ins_del, cost_node_sub, cost_edge_sub, loss_valid, loss_train = GEDclassification(
         model, Gs, nb_epochs, device, y, rings_andor_fw, verbosity=args.verbosity)
 
+    # Sauvegarde du modele
+    default_directory = "save_runs"
+    if(not os.path.isdir(default_directory)):
+        os.mkdir(default_directory)
+    time_stamp = datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
+    path = os.path.join(default_directory, time_stamp)
+    os.mkdir(path)
+    directory = path
+
     if(args.verbosity):
         print(loss_train, loss_valid)
-        visualize(cost_ins_del, cost_node_sub,
-                  cost_edge_sub, loss_train, loss_valid)
+
+    visualize(cost_ins_del, cost_node_sub, cost_edge_sub,
+              loss_train, loss_valid,
+              directory, args.verbosity)
     # We save the losses into pickle files
-    save_data(loss_valid_plt, loss_train_plt, InsDel, edgeSub,
-              nodeSub, repr(args))
+    save_data(directory, loss_valid, loss_train, cost_ins_del, cost_edge_sub,
+              cost_node_sub, repr(args))
