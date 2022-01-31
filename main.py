@@ -6,7 +6,7 @@ import GPUtil
 import matplotlib.pyplot as plt
 import matplotlib
 import argparse
-
+from datetime import datetime
 from gklearn.utils.graphfiles import loadDataset
 
 from deepged.learning import GEDclassification
@@ -16,10 +16,11 @@ from deepged.utils import from_networkx_to_tensor
 matplotlib.use('TkAgg')
 
 
-def visualize(InsDel, nb_iter, nodeSub, edgeSub,  loss_valid_plt):
+def visualize(cost_ins_del, cost_node_sub, cost_edge_sub,  loss_train, loss_valid):
     """
     Plot l'évolution des couts ainsi que la loss
     """
+    # plt.figure(fig
     # Plotting Node/Edge insertion/deletion costs
     plt.figure(0)
     plt.plot(InsDel[0:nb_iter, 0], label="node")
@@ -54,22 +55,38 @@ def visualize(InsDel, nb_iter, nodeSub, edgeSub,  loss_valid_plt):
     plt.close()
 
 
-def save_data(loss_valid_plt, loss_train_plt, InsDel, edgeSub, nodeSub, rings_andor_fw):
+def save_data(loss_valid_plt, loss_train_plt,
+              ins_del, edge_sub, node_sub,  args, directory=None):
     """
     Sauvegarde l'ensemble du learning aisni que les poids optimisés
     """
-    torch.save(loss_valid_plt, 'pickle_files/'+rings_andor_fw +
-               '/loss_valid_plt', pickle_module=pkl)
-    torch.save(loss_train_plt, 'pickle_files/'+rings_andor_fw +
-               '/loss_train_plt', pickle_module=pkl)
+    if (directory is None):
+        default_directory = "save_runs"
+        if(not os.path.isdir(default_directory)):
+            os.mkdir(default_directory)
+        time_stamp = datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
+        path = os.path.join(default_directory, time_stamp)
+        os.mkdir(path)
+        directory = path
+    else:
+        if (not os.path.isdir(directory)):
+            raise FileNotFoundError
+    breakpoint()
+
+    torch.save(loss_valid_plt, os.path.join(
+        directory, "loss_valid_plt"), pickle_module=pkl)
+    torch.save(loss_train_plt, os.path.join(
+        directory, "loss_train_plt"), pickle_module=pkl)
 
     # We save the costs into pickle files
-    torch.save(InsDel, 'pickle_files/'+rings_andor_fw +
-               '/InsDel', pickle_module=pkl)
-    torch.save(edgeSub, 'pickle_files/'+rings_andor_fw +
-               '/edgeSub', pickle_module=pkl)
-    torch.save(nodeSub, 'pickle_files/'+rings_andor_fw +
-               '/nodeSub', pickle_module=pkl)
+    torch.save(InsDel, os.path.join(
+        directory, "cost_ins_del"), pickle_module=pkl)
+    torch.save(edge_sub, os.path.join(
+        directory, "cost_edge_sub"), pickle_module=pkl)
+    torch.save(node_sub, os.path.join(
+        directory, "cost_node_sub"), pickle_module=pkl)
+    with open(os.path.join(directory, "arguments.txt"), "w") as f:
+        f.write(args)
 
 
 if __name__ == "__main__":
@@ -122,12 +139,13 @@ if __name__ == "__main__":
     if(args.verbosity):
         GPUtil.showUtilization()
 
-    InsDel, nodeSub, edgeSub, loss_valid_plt, loss_train_plt = GEDclassification(
+    cost_ins_del, cost_node_sub, cost_edge_sub, loss_valid, loss_train = GEDclassification(
         model, Gs, nb_epochs, device, y, rings_andor_fw, verbosity=args.verbosity)
 
     if(args.verbosity):
-        print(loss_train_plt, loss_valid_plt)
-        visualize(InsDel, nb_epochs, nodeSub, edgeSub, loss_valid_plt)
+        print(loss_train, loss_valid)
+        visualize(cost_ins_del, cost_node_sub,
+                  cost_edge_sub, loss_train, loss_valid)
     # We save the losses into pickle files
     save_data(loss_valid_plt, loss_train_plt, InsDel, edgeSub,
-              nodeSub, rings_andor_fw)
+              nodeSub, repr(args))
