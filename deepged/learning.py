@@ -1,14 +1,13 @@
 import numpy as np
 import torch
-import pickle as pkl
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 
 from datetime import datetime
 
-
 from deepged.triangular_losses import TriangularConstraint as triangular_constraint
-from deepged.data_manager.data_split import splitting
+#from deepged.data_manager.data_split import splitting
+from deepged.dataset import initialize_dataset
 
 
 def normalize(ged):
@@ -22,18 +21,21 @@ def normalize(ged):
 
 
 def forward_data_model(loader, model, Gs, device):
-    '''
-    Effectue une passe forward d'un loader (train, valid ou test) et renvoie
+    '''Effectue une passe forward d'un loader (train, valid ou test)
+    et renvoie l'ensemble des ged et des labels si meme classe ou
+    non
+
     :param loader: le loader utilisé
     :param model: le modèle utilisé
-    :param Gs: l'ensemble des graphes sous forme de liste
+    :param Gs: l'ensemble des graphes sous forme de
+    liste
     :param device:device utilisé (cpu ou gpu)
-    :return: l'ensemble des prédictions, ainsi que les true_labels
+    :return: l'ensemble des prédictions, ainsi
+    que les true_labels
     '''
 
     for data, labels in loader:
         ged_pred = torch.zeros(len(data))
-        # Zero gradients, perform a backward pass, and update the weights.
         # Forward pass: Compute predicted y by passing data to the model
         for k in tqdm(range(len(data))):
             g1_idx, g2_idx = data[k]
@@ -73,15 +75,15 @@ def tensorboardExport(writer, epoch, train_loss, valid_loss, node_ins_del, edge_
     writer.flush()
 
 
-def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw, verbosity=True):
+def GEDclassification(model, Gs, nb_epochs, device, y,
+                      rings_andor_fw, verbosity=True):
     """
     Run nb_epochs epochs pour fiter les couts de la ged
 
     TODO : function trop longue, à factoriser
     """
 
-    trainloader, validationloader, test_loader = splitting(
-        Gs, y, saving_path=rings_andor_fw, already_divided=False)
+    train_loader, valid_loader, test_loader = initialize_dataset(Gs, y)
 
     now = datetime.now()
     writer = SummaryWriter("runs/data_" + now.strftime("%d-%m_%H-%M-%S"))
@@ -109,7 +111,7 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw, verbosity
         current_valid_loss = 0.0
         # Learning step
         ged_pred, train_labels = forward_data_model(
-            trainloader, model, Gs, device)
+            train_loader, model, Gs, device)
         loss = criterion(ged_pred, train_labels)
         node_costs, node_ins_del, edge_costs, edge_ins_del = model.from_weights_to_costs()
 
@@ -148,7 +150,7 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw, verbosity
         # The validation part :
         with torch.no_grad():
             ged_pred, valid_labels = forward_data_model(
-                validationloader, model, Gs, device)
+                valid_loader, model, Gs, device)
             current_valid_loss = criterion(ged_pred, valid_labels).item()
             loss_valid[epoch] = current_valid_loss
 
