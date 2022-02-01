@@ -21,25 +21,6 @@ def normalize(ged):
     return ged
 
 
-def save_costs(node_ins_del, edge_ins_del, node_costs, edge_costs, rings_andor_fw, identifier):
-    '''
-    Sauvegarde l'ensemble des couts sous forme de pickle files
-
-    '''
-    node_ins_del_init = node_ins_del
-    edge_ins_del_init = edge_ins_del
-    node_sub_init = node_costs
-    edge_sub_init = edge_costs
-    torch.save(node_ins_del_init, 'pickle_files/' +
-               rings_andor_fw + '/node_ins_del_' + identifier, pickle_module=pkl)
-    torch.save(edge_ins_del_init, 'pickle_files/' +
-               rings_andor_fw + '/edge_ins_del_' + identifier, pickle_module=pkl)
-    torch.save(node_sub_init, 'pickle_files/' +
-               rings_andor_fw + '/node_sub_' + identifier, pickle_module=pkl)
-    torch.save(edge_sub_init, 'pickle_files/' +
-               rings_andor_fw + '/edge_sub_' + identifier, pickle_module=pkl)
-
-
 def forward_data_model(loader, model, Gs, device):
     '''
     Effectue une passe forward d'un loader (train, valid ou test) et renvoie
@@ -162,10 +143,6 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw, verbosity
         loss_train[epoch] = current_train_loss
 
         # Fin for Batch
-        if epoch == 0:
-            # TODO : faire une structure pour les couts également
-            save_costs(node_ins_del, edge_ins_del,
-                       node_costs, edge_costs, rings_andor_fw, "init")
 
         # Getting some information every 100 iterations, to follow the evolution
         # The validation part :

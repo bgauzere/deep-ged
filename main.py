@@ -13,7 +13,7 @@ from gklearn.utils.graphfiles import loadDataset
 from deepged.learning import GEDclassification
 from deepged.data_manager.label_manager import compute_extended_labels, build_node_dictionnary
 from deepged.model import GedLayer
-from deepged.utils import from_networkx_to_tensor
+
 matplotlib.use('TkAgg')
 
 
@@ -127,9 +127,9 @@ if __name__ == "__main__":
     rings_andor_fw = dico_calc[args.calculation]
     device = dico_device[args.device]
     nb_epochs = args.nb_epochs
+    path_dataset = args.path
 
     # Init dataset
-    path_dataset = args.path
     if (args.verbosity):
         print(f"Paramètres: {args}")
 
@@ -141,10 +141,12 @@ if __name__ == "__main__":
 
     node_label = args.label_node
     edge_label = args.label_edge
+
     node_labels, nb_edge_labels = build_node_dictionnary(
         Gs, node_label, edge_label)
     nb_labels = len(node_labels)
-    model = GedLayer(nb_labels, nb_edge_labels, node_labels, rings_andor_fw, normalize=args.normalize,
+    model = GedLayer(nb_labels, nb_edge_labels, node_labels, rings_andor_fw,
+                     normalize=args.normalize,
                      node_label=node_label)
 
     # Getting the GPU status :
