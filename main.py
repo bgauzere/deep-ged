@@ -145,12 +145,13 @@ if __name__ == "__main__":
     node_labels, nb_edge_labels = build_node_dictionnary(
         Gs, node_label, edge_label)
     nb_labels = len(node_labels)
+
     model = GedLayer(nb_labels, nb_edge_labels, node_labels, rings_andor_fw,
                      normalize=args.normalize,
                      node_label=node_label)
 
     # Getting the GPU status :
-    if(args.verbosity):
+    if(args.verbosity and args.device == 'gpu'):
         GPUtil.showUtilization()
 
     cost_ins_del, cost_node_sub, cost_edge_sub, loss_valid, loss_train = GEDclassification(

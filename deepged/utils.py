@@ -45,6 +45,6 @@ def load_MAO():
 def from_networkx_to_tensor(G, dict_nodes, node_label, edge_label="bond_type"):
     A = torch.tensor(nx.to_scipy_sparse_matrix(
         G, dtype=int, weight=edge_label).todense(), dtype=torch.int)
-    lab = [dict_nodes[G.nodes[v][node_label][0]] for v in nx.nodes(G)]
+    lab = [dict_nodes[G.nodes[v][node_label]] for v in nx.nodes(G)]
 
     return (A.view(1, A.shape[0] * A.shape[1]), torch.tensor(lab))
