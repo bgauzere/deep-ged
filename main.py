@@ -11,7 +11,7 @@ from datetime import datetime
 from gklearn.utils.graphfiles import loadDataset
 
 from deepged.learning import GEDclassification
-from deepged.data_manager.label_manager import compute_extended_labels, build_node_dictionnary
+from deepged.label_manager import compute_extended_labels, build_node_dictionnary
 from deepged.model import GedLayer
 
 matplotlib.use('TkAgg')

@@ -1,4 +1,3 @@
-import networkx as nx
 from itertools import chain
 
 
@@ -29,11 +28,17 @@ def compute_extended_labels(G, label_node='atom_symbol', label_edge='bond_type')
 
 
 def extract_edge_labels(list_of_graphs, edge_label="bond_type"):
+    '''
+    Calcul l'ensemble des labels d'aretes pour tout les graphes dans list_of_graphs
+    '''
     return set(chain(*[[e[2][edge_label] for e in a_graph.edges(
         data=True)] for a_graph in list_of_graphs]))
 
 
 def extract_node_labels(list_of_graphs, node_label="atom_type"):
+    '''
+    Calcul l'ensemble des labels de noeuds pour tout les graphes dans list_of_graphs
+    '''
     return set(chain(*[[v[1][node_label] for v in a_graph.nodes(
         data=True)] for a_graph in list_of_graphs]))
 
@@ -49,17 +54,6 @@ def build_node_dictionnary(list_of_graphs,
     dict_labels = {k: v for k, v in zip(
         sorted(ensemble_labels), range(len(ensemble_labels)))}
     # extraction d'un dictionnaire permettant de numéroter chaque label par un numéro.
-    # sum est la concatenation de liste
     edge_labels = extract_edge_labels(list_of_graphs, edge_label)
     nb_edge_labels = len(edge_labels)
     return dict_labels, nb_edge_labels
-
-
-if __name__ == '__main__':
-    dataset_path = os.getenv('MAO_DATASET_PATH')
-    Gs, y, labels = load_dataset(dataset_path)
-    for g in Gs:
-        compute_extended_labels(g, label_node='atom_symbol')
-    # Verif, un label extended_label devrait apparaitre
-    for v in Gs[12].nodes():
-        print(Gs[12].nodes[v])
