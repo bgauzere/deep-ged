@@ -148,7 +148,8 @@ if __name__ == "__main__":
 
     model = GedLayer(nb_labels, nb_edge_labels, node_labels, rings_andor_fw,
                      normalize=args.normalize,
-                     node_label=node_label)
+                     node_label=node_label,
+                     device=args.device)
 
     # Getting the GPU status :
     if(args.verbosity and args.device == 'gpu'):

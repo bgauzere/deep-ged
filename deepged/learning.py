@@ -5,7 +5,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from datetime import datetime
 
-from deepged.triangular_losses import TriangularConstraint as triangular_constraint
+from deepged.triangular_losses import TriangularConstraint
 # from deepged.data_manager.data_split import splitting
 from deepged.dataset import initialize_dataset
 
@@ -75,7 +75,8 @@ def tensorboardExport(writer, epoch, train_loss, valid_loss, node_ins_del, edge_
     writer.flush()
 
 
-def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw, verbosity=True):
+def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw,
+                      verbosity=True, learning_rate=0.01):
     """ Run nb_epochs epochs pour fiter les couts de la ged
     TODO : function trop longue, à factoriser
     """
@@ -83,9 +84,11 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw, verbosity
 
     now = datetime.now()
     writer = SummaryWriter("runs/data_" + now.strftime("%d-%m_%H-%M-%S"))
+
     criterion = torch.nn.HingeEmbeddingLoss(reduction='sum')
-    criterion_tri = triangular_constraint()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)  # , lr=1e-3
+    criterion_tri = TriangularConstraint()
+    optimizer = torch.optim.Adam(
+        model.parameters(), lr=learning_rate)
 
     node_costs, node_ins_del, edge_costs, edge_ins_del = model.from_weights_to_costs()
     # TODO ; a documenter et mettre dansu ne fonction
