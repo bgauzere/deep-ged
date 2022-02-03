@@ -1,4 +1,5 @@
 import networkx as nx
+from itertools import chain
 
 
 def compute_star(G, id_node, label_node, label_edge):
@@ -27,6 +28,16 @@ def compute_extended_labels(G, label_node='atom_symbol', label_edge='bond_type')
     return G
 
 
+def extract_edge_labels(list_of_graphs, edge_label="bond_type"):
+    return set(chain(*[[e[2][edge_label] for e in a_graph.edges(
+        data=True)] for a_graph in list_of_graphs]))
+
+
+def extract_node_labels(list_of_graphs, node_label="atom_type"):
+    return set(chain(*[[v[1][node_label] for v in a_graph.nodes(
+        data=True)] for a_graph in list_of_graphs]))
+
+
 def build_node_dictionnary(list_of_graphs,
                            node_label="atom_type", edge_label="bond_type"):
     '''
@@ -34,18 +45,12 @@ def build_node_dictionnary(list_of_graphs,
     Retourne un dictionnaire associant un label a un entier  et le nombre de labels d'aretes
     TODO : fonction a pythoniser et optimiser
     '''
-    ensemble_labels = set()
-    for a_graph in list_of_graphs:
-        for v in nx.nodes(a_graph):
-            current_label = a_graph.nodes[v][node_label]
-            ensemble_labels.add(current_label)
+    ensemble_labels = extract_node_labels(list_of_graphs, node_label)
     dict_labels = {k: v for k, v in zip(
         sorted(ensemble_labels), range(len(ensemble_labels)))}
     # extraction d'un dictionnaire permettant de numéroter chaque label par un numéro.
-    edge_labels = set()
-    for a_graph in list_of_graphs:
-        edge_labels.update(*[e[2][edge_label] for e in a_graph.edges(
-            data=True)])
+    # sum est la concatenation de liste
+    edge_labels = extract_edge_labels(list_of_graphs, edge_label)
     nb_edge_labels = len(edge_labels)
     return dict_labels, nb_edge_labels
 
