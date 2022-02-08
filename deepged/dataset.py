@@ -52,26 +52,38 @@ def build_pairs_of_graphs_for_classification(graph_indices, y, avoid_pair_of_neg
     return torch.tensor(couples_train), torch.tensor(paired_y)
 
 
-def generate_dataloader(graph_indices, graph_label):
+def generate_dataloader(graph_indices, graph_label, size_batch=None):
+    '''
+    size_batch : nb de paires de graphes par batch. If None, un seul batch par epoch
+    '''
+
     dataset = TensorDataset(graph_indices, graph_label)
-    loader = DataLoader(dataset, batch_size=len(dataset), drop_last=False)
+    if(size_batch == None):
+        size_batch = len(dataset)
+    loader = DataLoader(dataset, batch_size=size_batch, drop_last=True)
     return loader
 
 
-def from_indices_to_dataloader(graph_indices, graph_label, avoid_pair_of_negative=True):
+def from_indices_to_dataloader(graph_indices, graph_label,
+                               avoid_pair_of_negative=True,
+                               size_batch=None):
     data, y = build_pairs_of_graphs_for_classification(
         graph_indices, graph_label, avoid_pair_of_negative)
-    return generate_dataloader(data, y)
+    return generate_dataloader(data, y, size_batch)
 
 
-def initialize_dataset(graphs, y, avoid_pair_of_negative=True, train_size=0.6, valid_size=0.2, test_size=0.2, shuffle=True):
+def initialize_dataset(graphs, y, avoid_pair_of_negative=True,
+                       train_size=0.6, valid_size=0.2, test_size=0.2,
+                       shuffle=True,
+                       size_batch_train=None):
     '''
     Returns three torch dataLoader for train, valid and test according to ratios
     '''
     dataset_train, dataset_valid, dataset_test = initialize_dataset_split(graphs, y,
                                                                           train_size=train_size, valid_size=valid_size, test_size=test_size,
                                                                           shuffle=shuffle)
-    loader_train = from_indices_to_dataloader(*dataset_train)
-    loader_valid = from_indices_to_dataloader(*dataset_valid)
+    loader_train = from_indices_to_dataloader(
+        *dataset_train, size_batch=size_batch_train)
+    loader_valid = from_indices_to_dataloader(*dataset_valid, size_batch=None)
     loader_test = from_indices_to_dataloader(*dataset_test)
     return loader_train, loader_valid, loader_test

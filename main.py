@@ -104,6 +104,7 @@ if __name__ == "__main__":
     dico_device = {"cpu": 'cpu', 'gpu': 'cuda:0'}
     dico_calc = {0: 'rings_sans_fw', 1: 'sans_rings_avec_fw',
                  2: 'rings_avec_fw', 3: 'sans_rings_sans_fw'}
+
     parser = argparse.ArgumentParser()
     parser.add_argument('path', help='Path to the dataset', type=str)
     parser.add_argument(
@@ -121,6 +122,8 @@ if __name__ == "__main__":
                         nargs='?', type=str, default='bond_type')
     parser.add_argument('--nb_epochs', help="Nb of epochs",
                         type=int, default=50)
+    parser.add_argument(
+        "--size_batch", help="Number of pairs of Graphs, for each batch. Default : 1 batch per epoch", type=int, default=None)
     args = parser.parse_args()
 
     # Configuraiton du modele
@@ -128,7 +131,7 @@ if __name__ == "__main__":
     device = dico_device[args.device]
     nb_epochs = args.nb_epochs
     path_dataset = args.path
-
+    size_batch = args.size_batch
     # Init dataset
     if (args.verbosity):
         print(f"Paramètres: {args}")
@@ -156,7 +159,8 @@ if __name__ == "__main__":
         GPUtil.showUtilization()
 
     cost_ins_del, cost_node_sub, cost_edge_sub, loss_valid, loss_train = GEDclassification(
-        model, Gs, nb_epochs, device, y, rings_andor_fw, verbosity=args.verbosity)
+        model, Gs, nb_epochs, device, y, rings_andor_fw,
+        verbosity=args.verbosity, size_batch=size_batch)
 
     # Sauvegarde du modele
     default_directory = "save_runs"

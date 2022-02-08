@@ -20,7 +20,7 @@ def normalize(ged):
     return ged
 
 
-def forward_data_model(loader, model, Gs, device):
+def forward_data_model(data, model, Gs, device):
     '''Effectue une passe forward d'un loader (train, valid ou test)
     et renvoie l'ensemble des ged et des labels si meme classe ou
     non
@@ -33,17 +33,15 @@ def forward_data_model(loader, model, Gs, device):
     :return: l'ensemble des prédictions, ainsi
     que les true_labels
     '''
-
-    for data, labels in loader:
-        ged_pred = torch.zeros(len(data))
-        # Forward pass: Compute predicted y by passing data to the model
-        for k in tqdm(range(len(data))):
-            g1_idx, g2_idx = data[k]
-            ged_pred[k] = model((Gs[g1_idx], Gs[g2_idx]))
+    ged_pred = torch.zeros(len(data))
+    # Forward pass: Compute predicted y by passing data to the model
+    for k in tqdm(range(len(data))):
+        g1_idx, g2_idx = data[k]
+        ged_pred[k] = model((Gs[g1_idx], Gs[g2_idx]))
 
     ged_pred = normalize(ged_pred)
 
-    return ged_pred, labels
+    return ged_pred
 
 
 def tensorboardExport(writer, epoch, train_loss, valid_loss, node_ins_del, edge_ins_del, node_costs, edge_costs):
@@ -76,14 +74,13 @@ def tensorboardExport(writer, epoch, train_loss, valid_loss, node_ins_del, edge_
 
 
 def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw,
-                      verbosity=True, learning_rate=0.01):
+                      verbosity=True, learning_rate=0.01,
+                      size_batch=None):
     """ Run nb_epochs epochs pour fiter les couts de la ged
     TODO : function trop longue, à factoriser
     """
-    train_loader, valid_loader, test_loader = initialize_dataset(Gs, y)
-
-    now = datetime.now()
-    writer = SummaryWriter("runs/data_" + now.strftime("%d-%m_%H-%M-%S"))
+    train_loader, valid_loader, test_loader = initialize_dataset(
+        Gs, y, size_batch_train=size_batch)
 
     criterion = torch.nn.HingeEmbeddingLoss(reduction='sum')
     criterion_tri = TriangularConstraint()
@@ -91,7 +88,12 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw,
         model.parameters(), lr=learning_rate)
 
     node_costs, node_ins_del, edge_costs, edge_ins_del = model.from_weights_to_costs()
+
     # TODO ; a documenter et mettre dansu ne fonction
+    # Pour sauvegarde :
+    now = datetime.now()
+    writer = SummaryWriter("runs/data_" + now.strftime("%d-%m_%H-%M-%S"))
+
     ins_del = np.empty((nb_epochs, 2))
     node_sub = np.empty(
         (nb_epochs, int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
@@ -100,26 +102,35 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw,
 
     loss_train = np.empty(nb_epochs)
     loss_valid = np.empty(nb_epochs)
-    min_valid_loss = np.inf
-    iter_min_valid_loss = 0
 
     for epoch in range(nb_epochs):
         current_train_loss = 0.0
-        current_valid_loss = 0.0
-        # Learning step
-        ged_pred, train_labels = forward_data_model(
-            train_loader, model, Gs, device)
-        loss = criterion(ged_pred, train_labels)
-        node_costs, node_ins_del, edge_costs, edge_ins_del = model.from_weights_to_costs()
-
-        triangular_inequality = criterion_tri(
-            node_costs, node_ins_del, edge_costs, edge_ins_del)
-        loss = loss * (1 + triangular_inequality)
+        nb_train = 0
+        for data, labels in train_loader:
+            # Learning step
+            nb_train += len(data)
+            # TODO : du coup train_labels devrait être inutile
+            ged_pred = forward_data_model(
+                data, model, Gs, device)
+            loss = criterion(ged_pred, labels)
+            triangular_inequality = criterion_tri(
+                node_costs, node_ins_del, edge_costs, edge_ins_del)
+            loss = loss * (1 + triangular_inequality)
+            current_train_loss += loss
+            node_costs, node_ins_del, edge_costs, edge_ins_del = model.from_weights_to_costs()
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+            # Fin for Batch
+        # if(verbosity):
+        #     print('grad of node weighs', model.node_weights.grad)
+        #     print('grad of edge weighs', model.edge_weights.grad)
 
         # Mise à jour des couts
         ins_del[epoch][0] = node_ins_del.item()
         ins_del[epoch][1] = edge_ins_del.item()
 
+        # Sauvegarde des couts
         k = 0
         for p in range(node_costs.shape[0]):
             for q in range(p + 1, node_costs.shape[0]):
@@ -131,32 +142,31 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw,
                 edge_sub[epoch][k] = edge_costs[p][q]
                 k = k + 1
 
-        loss.backward()
-        if(verbosity):
-            print('grad of node weighs', model.node_weights.grad)
-            print('grad of edge weighs', model.edge_weights.grad)
-        optimizer.step()
-        optimizer.zero_grad()
-
-        current_train_loss = loss.item()
+        current_train_loss = current_train_loss.item()
         loss_train[epoch] = current_train_loss
 
-        # Fin for Batch
-
-        # Getting some information every 100 iterations, to follow the evolution
         # The validation part :
-        with torch.no_grad():
-            ged_pred, valid_labels = forward_data_model(
-                valid_loader, model, Gs, device)
-            current_valid_loss = criterion(ged_pred, valid_labels).item()
-            loss_valid[epoch] = current_valid_loss
+        current_valid_loss = 0.0
+        nb_valid = 0
+        for data, labels in valid_loader:
+            nb_valid += len(data)
+            with torch.no_grad():
+                ged_pred = forward_data_model(
+                    data, model, Gs, device)
+                loss = criterion(ged_pred, labels).item()
+                loss += criterion_tri(node_costs, node_ins_del,
+                                      edge_costs, edge_ins_del)
+                loss = loss * (1 + triangular_inequality)
+
+                current_valid_loss += loss
+        loss_valid[epoch] = current_valid_loss
 
         if (verbosity):
             print(
-                f"Iteration {epoch + 1} \t\t Training Loss: {loss_train[epoch]} - {loss_train[epoch]/len(train_labels)}")
+                f"Iteration {epoch + 1} \t\t Training Loss: {current_train_loss} - {current_train_loss/nb_train}")
             print(
-                f"loss.item of the valid={current_valid_loss} - {current_valid_loss/len(valid_labels)}")
-
+                f"loss.item of the valid={current_valid_loss} - {current_valid_loss/nb_valid}")
+        # Sauvegarde
         tensorboardExport(writer, epoch, current_train_loss, current_valid_loss,
                           node_ins_del.item(), edge_ins_del.item(), node_costs, edge_costs)
 
@@ -164,5 +174,4 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw,
                           node_ins_del.item(), edge_ins_del.item(), node_costs, edge_costs)
         # Fermeture du tensorboard
         writer.close()
-        # Enregistrement du min
     return ins_del, node_sub, edge_sub,  loss_valid, loss_train
