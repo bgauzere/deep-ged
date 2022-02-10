@@ -51,12 +51,14 @@ class GedLayer(nn.Module):
         edge_weights = (1e-2)*(1.0+.1 *
                                np.random.rand(nb_edge_pair_label + 1))
         edge_weights[-1] = 2.0e-2
-
-        self.node_weights = nn.Parameter(torch.tensor(
-            node_weights, dtype=torch.float))
-        self.edge_weights = nn.Parameter(torch.tensor(
+        self.params=torch.nn.ParameterDict({
+            'node_weights':  nn.Parameter(torch.tensor(
+                node_weights, dtype=torch.float)),
+        'edge_weights': nn.Parameter(torch.tensor(
             edge_weights, dtype=torch.float))
+            })
 
+        
     def forward(self, graphs):
         '''
         :param graphs: tuple de graphes networkx
@@ -95,6 +97,30 @@ class GedLayer(nn.Module):
         ged = (.5 * v.T @ D @ v + c.T @ v)/normalize_factor
         return ged
 
+    def project_weights(self):
+        relu = torch.nn.ReLU()
+        edge_ins_del = self.params['edge_weights'][-1]
+        # ce cout est fixe pour apporter une normalisation des distances.
+        node_ins_del = torch.tensor(3.0e-2)
+#        breakpoint()
+        """
+        self.params.update([
+            ('node_weights',
+             torch.nn.Parameter(
+                 torch.where(self.params['node_weights']<=2.0*node_ins_del,
+                             relu(self.params['node_weights']),
+                             2.0*node_ins_del*torch.ones_like(self.params['node_weights'])))
+             ),
+            ('edge_weights',
+             torch.nn.Parameter(
+                 torch.where(self.params['edge_weights']<=2.0*edge_ins_del,
+                             relu(self.params['edge_weights']),
+                             2.0*edge_ins_del*torch.ones_like(self.params['edge_weights'])))
+             )])
+    """
+        torch.clamp(input=self.params['edge_weights'],min=0.0,max=2*edge_ins_del,out=self.params['edge_weights'])
+        torch.clamp(input=self.params['node_weights'],min=0.0,max=2*node_ins_del,out=self.params['node_weights'])
+
     def from_weights_to_costs(self):
         """
         Transforme les poids en couts de ged en les rendant poisitifs
@@ -102,8 +128,8 @@ class GedLayer(nn.Module):
         """
         # We apply the ReLU (rectified linear unit) function element-wise
         relu = torch.nn.ReLU()
-        cn = relu(self.node_weights)
-        ce = relu(self.edge_weights)
+        cn = relu(self.params['node_weights'])
+        ce = relu(self.params['edge_weights'])
         edge_ins_del = ce[-1]
         # ce cout est fixe pour apporter une normalisation des distances.
         node_ins_del = torch.tensor(3.0e-2)

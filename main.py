@@ -122,6 +122,8 @@ if __name__ == "__main__":
                         nargs='?', type=str, default='bond_type')
     parser.add_argument('--nb_epochs', help="Nb of epochs",
                         type=int, default=50)
+    parser.add_argument('--constraint', help="Policy concerning constraints",
+                        choices=['no_constraint','add_to_loss','projection'],type=str, default='no_constraint')
     parser.add_argument(
         "--size_batch", help="Number of pairs of Graphs, for each batch. Default : 1 batch per epoch", type=int, default=None)
     args = parser.parse_args()
@@ -132,6 +134,7 @@ if __name__ == "__main__":
     nb_epochs = args.nb_epochs
     path_dataset = args.path
     size_batch = args.size_batch
+    constraint=args.constraint
     # Init dataset
     if (args.verbosity):
         print(f"Paramètres: {args}")
@@ -152,7 +155,7 @@ if __name__ == "__main__":
     model = GedLayer(nb_labels, nb_edge_labels, node_labels, rings_andor_fw,
                      normalize=args.normalize,
                      node_label=node_label,
-                     device=args.device)
+                     device=dico_device[args.device])
 
     # Getting the GPU status :
     if(args.verbosity and args.device == 'gpu'):
@@ -160,7 +163,7 @@ if __name__ == "__main__":
 
     cost_ins_del, cost_node_sub, cost_edge_sub, loss_valid, loss_train = GEDclassification(
         model, Gs, nb_epochs, device, y, rings_andor_fw,
-        verbosity=args.verbosity, size_batch=size_batch)
+        verbosity=args.verbosity, size_batch=size_batch,constraint=constraint)
 
     # Sauvegarde du modele
     default_directory = "save_runs"

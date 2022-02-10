@@ -75,7 +75,8 @@ def tensorboardExport(writer, epoch, train_loss, valid_loss, node_ins_del, edge_
 
 def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw,
                       verbosity=True, learning_rate=0.01,
-                      size_batch=None):
+                      size_batch=None,
+                      constraint='no_constraint'):
     """ Run nb_epochs epochs pour fiter les couts de la ged
     TODO : function trop longue, à factoriser
     """
@@ -113,19 +114,21 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw,
             ged_pred = forward_data_model(
                 data, model, Gs, device)
             loss = criterion(ged_pred, labels)
-            triangular_inequality = criterion_tri(
-                node_costs, node_ins_del, edge_costs, edge_ins_del)
-            loss = loss * (1 + triangular_inequality)
+            if constraint == 'add_to_loss':
+                triangular_inequality = criterion_tri( node_costs, node_ins_del, edge_costs, edge_ins_del)
+                loss = .5*loss * (1.0 + triangular_inequality)
             current_train_loss += loss
             node_costs, node_ins_del, edge_costs, edge_ins_del = model.from_weights_to_costs()
-            loss.backward()
+#            print(                f"loss attache:{2.0*loss/(1+triangular_inequality)}\t\t triangular loss{triangular_inequality}\t\t total loss:{loss}")
+            loss.backward() 
             optimizer.step()
+            if(verbosity):
+                print('grad of node weighs', model.params['node_weights'].grad)
+                print('grad of edge weighs', model.params['edge_weights'].grad)
+
             optimizer.zero_grad()
             # Fin for Batch
-        # if(verbosity):
-        #     print('grad of node weighs', model.node_weights.grad)
-        #     print('grad of edge weighs', model.edge_weights.grad)
-
+         
         # Mise à jour des couts
         ins_del[epoch][0] = node_ins_del.item()
         ins_del[epoch][1] = edge_ins_del.item()
@@ -154,9 +157,10 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw,
                 ged_pred = forward_data_model(
                     data, model, Gs, device)
                 loss = criterion(ged_pred, labels).item()
-                loss += criterion_tri(node_costs, node_ins_del,
+                if constraint=='add_to_loss':
+                    loss += criterion_tri(node_costs, node_ins_del,
                                       edge_costs, edge_ins_del)
-                loss = loss * (1 + triangular_inequality)
+                    loss = loss * (1 + triangular_inequality)
 
                 current_valid_loss += loss
         loss_valid[epoch] = current_valid_loss
@@ -166,7 +170,8 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw,
                 f"Iteration {epoch + 1} \t\t Training Loss: {current_train_loss} - {current_train_loss/nb_train}")
             print(
                 f"loss.item of the valid={current_valid_loss} - {current_valid_loss/nb_valid}")
-        # Sauvegarde
+
+            # Sauvegarde
         tensorboardExport(writer, epoch, current_train_loss, current_valid_loss,
                           node_ins_del.item(), edge_ins_del.item(), node_costs, edge_costs)
 
@@ -174,4 +179,11 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw,
                           node_ins_del.item(), edge_ins_del.item(), node_costs, edge_costs)
         # Fermeture du tensorboard
         writer.close()
+        
+        if constraint == 'projection' and (torch.any(model.params['edge_weights']<0) or  torch.any(model.params['node_weights']<0) or    torch.any(model.params['edge_weights'][:-1] >2.0*model.params['edge_weights'][-1]) or   torch.any(model.params['node_weights'] >2.0*node_ins_del)):
+            with torch.no_grad():
+                print('edge weights avant:',model.params['edge_weights'])
+                model.project_weights()
+                print('edge weights après:',model.params['edge_weights'])
+
     return ins_del, node_sub, edge_sub,  loss_valid, loss_train

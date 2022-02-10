@@ -30,7 +30,7 @@ class TriangularConstraint(_Loss):
         self.swap = swap
 
     def forward(self, node_costs,nodeInsDel,edge_costs,edgeInsDel):
-        node_loss=torch.max(node_costs-2*nodeInsDel+self.margin,torch.zeros_like(node_costs))        
+        node_loss=torch.max(node_costs/(2.0*nodeInsDel+self.margin),torch.ones_like(node_costs))        
         node_upper_part=torch.triu_indices(node_loss.shape[0],node_loss.shape[1],offset=1)
         
         if self.reduction=='mean':
@@ -42,13 +42,13 @@ class TriangularConstraint(_Loss):
         if edge_costs.shape[0]==0:
             return final_node_loss
         
-        edge_loss=torch.max(edge_costs-2*edgeInsDel+self.margin,torch.zeros_like(edge_costs))
+        edge_loss=torch.max(edge_costs/(2.0*edgeInsDel+self.margin),torch.ones_like(edge_costs))
         edge_upper_part=torch.triu_indices(edge_loss.shape[0],edge_loss.shape[1],offset=1)
         
         if self.reduction=='mean':
-            return final_node_loss+edge_loss[edge_upper_part[0],edge_upper_part[1]].mean()
+            return .5*(final_node_loss+edge_loss[edge_upper_part[0],edge_upper_part[1]].mean())
 
-        return final_node_loss+edge_loss[edge_upper_part[0],edge_upper_part[1]].sum()
+        return .5*(final_node_loss+edge_loss[edge_upper_part[0],edge_upper_part[1]].sum())
 
 
 class ReducedTriangularConstraint(_Loss):
