@@ -9,6 +9,8 @@ import matplotlib
 import argparse
 from datetime import datetime
 from gklearn.utils.graphfiles import loadDataset
+from gklearn.dataset import TUDataset_META
+from gklearn.dataset import Dataset
 
 from deepged.learning import GEDclassification
 from deepged.label_manager import compute_extended_labels, build_node_dictionnary
@@ -99,6 +101,18 @@ def save_data(directory, loss_valid, loss_train,
         f.write(args)
 
 
+def load_dataset(dataset_path):
+    '''
+    Returns NetworkX graphs and its targets according to given path.
+    Special path includes names described at https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets
+    '''
+    if dataset_path in TUDataset_META.keys():
+        ds = Dataset(dataset_path)
+        return ds.graphs, ds.targets
+    else:
+        return loadDataset(dataset_path)
+
+
 if __name__ == "__main__":
 
     dico_device = {"cpu": 'cpu', 'gpu': 'cuda:0'}
@@ -106,7 +120,8 @@ if __name__ == "__main__":
                  2: 'rings_avec_fw', 3: 'sans_rings_sans_fw'}
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('path', help='Path to the dataset', type=str)
+    parser.add_argument(
+        'path', help='Path to the dataset. Special values are dataset names included in https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets', type=str)
     parser.add_argument(
         "-v", '--verbosity', help="Print differents informations on the model", action="store_true", default=False)
     parser.add_argument("-d",
@@ -123,7 +138,9 @@ if __name__ == "__main__":
     parser.add_argument('--nb_epochs', help="Nb of epochs",
                         type=int, default=50)
     parser.add_argument('--constraint', help="Policy concerning constraints",
-                        choices=['no_constraint','add_to_loss','projection'],type=str, default='no_constraint')
+                        choices=['no_constraint', 'add_to_loss', 'projection'], type=str, default='no_constraint')
+    parser.add_argument('--extended_label', help="if set, use of extended labels. Label used is label_node",
+                        action='store_true', default=False)
     parser.add_argument(
         "--size_batch", help="Number of pairs of Graphs, for each batch. Default : 1 batch per epoch", type=int, default=None)
     args = parser.parse_args()
@@ -134,19 +151,21 @@ if __name__ == "__main__":
     nb_epochs = args.nb_epochs
     path_dataset = args.path
     size_batch = args.size_batch
-    constraint=args.constraint
+    constraint = args.constraint
     # Init dataset
     if (args.verbosity):
         print(f"Paramètres: {args}")
 
-    Gs, y = loadDataset(path_dataset)
-
-    # Utile pour rings ? du coup on a un cout pour chaque extended_label
-    for g in Gs:
-        compute_extended_labels(g, label_node="label")
+    Gs, y = load_dataset(path_dataset)
 
     node_label = args.label_node
     edge_label = args.label_edge
+    # Utile pour rings ? du coup on a un cout pour chaque extended_label
+    if(args.extended_label):
+        for g in Gs:
+            compute_extended_labels(
+                g, label_node=node_label, label_edge=edge_label)
+        node_label = 'extended_label'
 
     node_labels, nb_edge_labels = build_node_dictionnary(
         Gs, node_label, edge_label)
@@ -163,7 +182,7 @@ if __name__ == "__main__":
 
     cost_ins_del, cost_node_sub, cost_edge_sub, loss_valid, loss_train = GEDclassification(
         model, Gs, nb_epochs, device, y, rings_andor_fw,
-        verbosity=args.verbosity, size_batch=size_batch,constraint=constraint)
+        verbosity=args.verbosity, size_batch=size_batch, constraint=constraint)
 
     # Sauvegarde du modele
     default_directory = "save_runs"
