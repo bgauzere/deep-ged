@@ -81,7 +81,7 @@ def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw,
     TODO : function trop longue, à factoriser
     """
     train_loader, valid_loader, test_loader = initialize_dataset(
-        Gs, y, train_size=.3, size_batch_train=size_batch)
+        Gs, y, size_batch_train=size_batch)
 
     criterion = torch.nn.HingeEmbeddingLoss(reduction='sum')
     criterion_tri = TriangularConstraint()
