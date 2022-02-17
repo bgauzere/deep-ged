@@ -80,7 +80,7 @@ def learn_costs_for_classification(model, Gs, nb_epochs, device, y, rings_andor_
     """ Run nb_epochs epochs pour fiter les couts de la ged
     TODO : function trop longue, à factoriser
     """
-    train_loader, valid_loader, test_loader = initialize_dataset(
+    train_loader, valid_loader = initialize_dataset(
         Gs, y, size_batch_train=size_batch)
 
     criterion = torch.nn.HingeEmbeddingLoss(reduction='sum')

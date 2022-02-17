@@ -3,34 +3,23 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 
 
-def initialize_dataset_split(graphs, y,
-                             train_size=0.6, valid_size=0.2, test_size=0.2,
-                             shuffle=True):
+def dataset_split(graphs, y,
+                  train_size=0.7, test_size=0.3,
+                  shuffle=True):
     '''
     Split dataset indices into train, valid, test. Returns the
     three datasets with indices of graphs in Gs
     '''
     graph_idx = torch.arange(0, len(graphs), dtype=torch.int64)
-    [train_graph, remain_graph,
-     train_label, remain_label] = train_test_split(graph_idx, y,
-                                                   train_size=train_size,
-                                                   test_size=test_size + valid_size,
-                                                   shuffle=shuffle,
-                                                   stratify=y)
-    adjusted_ratio_valid = valid_size/(1-train_size)
-    # pour le second split. ratios réajustés.
-    adjusted_ratio_test = test_size/(1-train_size)
-
-    [valid_graph, test_graph,
-     valid_label, test_label] = train_test_split(remain_graph, remain_label,
-                                                 test_size=adjusted_ratio_test,
-                                                 train_size=adjusted_ratio_valid,
+    [train_graph, test_graph,
+     train_label, test_label] = train_test_split(graph_idx, y,
+                                                 train_size=train_size,
+                                                 test_size=test_size,
                                                  shuffle=shuffle,
-                                                 stratify=remain_label)
+                                                 stratify=y)
     dataset_train = (train_graph, train_label)
-    dataset_valid = (valid_graph, valid_label)
     dataset_test = (test_graph, test_label)
-    return dataset_train, dataset_valid, dataset_test
+    return dataset_train, dataset_test
 
 
 def build_pairs_of_graphs_for_classification(graph_indices, y, avoid_pair_of_negative=True):
@@ -73,17 +62,16 @@ def from_indices_to_dataloader(graph_indices, graph_label,
 
 
 def initialize_dataset(graphs, y, avoid_pair_of_negative=True,
-                       train_size=0.6, valid_size=0.2, test_size=0.2,
+                       train_size=0.7, test_size=0.3,
                        shuffle=True,
                        size_batch_train=None):
     '''
     Returns three torch dataLoader for train, valid and test according to ratios
     '''
-    dataset_train, dataset_valid, dataset_test = initialize_dataset_split(graphs, y,
-                                                                          train_size=train_size, valid_size=valid_size, test_size=test_size,
-                                                                          shuffle=shuffle)
+    dataset_train, dataset_test = dataset_split(graphs, y,
+                                                train_size=train_size, test_size=test_size,
+                                                shuffle=shuffle)
     loader_train = from_indices_to_dataloader(
         *dataset_train, size_batch=size_batch_train)
-    loader_valid = from_indices_to_dataloader(*dataset_valid, size_batch=None)
-    loader_test = from_indices_to_dataloader(*dataset_test)
-    return loader_train, loader_valid, loader_test
+    loader_test = from_indices_to_dataloader(*dataset_test, size_batch=None)
+    return loader_train, loader_test

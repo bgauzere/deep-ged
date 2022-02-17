@@ -15,7 +15,7 @@ from gklearn.dataset import Dataset
 from deepged.learning import learn_costs_for_classification
 from deepged.label_manager import compute_extended_labels, build_node_dictionnary
 from deepged.model import GedLayer
-
+from deepged.dataset import dataset_split
 matplotlib.use('TkAgg')
 
 
@@ -180,9 +180,17 @@ if __name__ == "__main__":
     if(args.verbosity and args.device == 'gpu'):
         GPUtil.showUtilization()
 
-    cost_ins_del, cost_node_sub, cost_edge_sub, loss_valid, loss_train = learn_costs_for_classification(
-        model, Gs, nb_epochs, device, y, rings_andor_fw,
-        verbosity=args.verbosity, size_batch=size_batch, constraint=constraint)
+    # Preparation of dataset
+    train_set, test_set = dataset_split(
+        Gs, y, train_size=.7, test_size=.3, shuffle=True)
+    indices_train, labels_train = train_set
+    graphs_train = [Gs[i] for i in indices_train]
+
+    cost_ins_del, cost_node_sub, \
+        cost_edge_sub, loss_valid, loss_train = learn_costs_for_classification(
+            model, graphs_train, nb_epochs, device, labels_train, rings_andor_fw,
+            verbosity=args.verbosity,
+            size_batch=size_batch, constraint=constraint)
 
     # Sauvegarde du modele
     default_directory = "save_runs"
@@ -202,3 +210,5 @@ if __name__ == "__main__":
     # We save the losses into pickle files
     save_data(directory, loss_valid, loss_train, cost_ins_del, cost_edge_sub,
               cost_node_sub, repr(args))
+
+    # Let's classify
