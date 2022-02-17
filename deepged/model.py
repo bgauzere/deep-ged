@@ -10,7 +10,7 @@ import torch
 
 from deepged.utils import from_networkx_to_tensor
 import deepged.rings as rings
-import deepged.svd as svd
+import deepged.optim as optim
 
 
 class GedLayer(nn.Module):
@@ -51,12 +51,12 @@ class GedLayer(nn.Module):
         edge_weights = (1e-2)*(1.0+.1 *
                                np.random.rand(nb_edge_pair_label + 1))
         edge_weights[-1] = 2.0e-2
-        self.params=torch.nn.ParameterDict({
+        self.params = torch.nn.ParameterDict({
             'node_weights':  nn.Parameter(torch.tensor(
                 node_weights, dtype=torch.float)),
-        'edge_weights': nn.Parameter(torch.tensor(
-            edge_weights, dtype=torch.float))
-            })
+            'edge_weights': nn.Parameter(torch.tensor(
+                edge_weights, dtype=torch.float))
+        })
 
         
     def forward(self, graphs):
@@ -82,10 +82,10 @@ class GedLayer(nn.Module):
         c = torch.diag(C)
         D = C - torch.eye(C.shape[0]) * c
         S = torch.exp(-.5*c.view(n+1, m+1))
-        #S = svd.from_cost_to_similarity_exp(c.view(n+1, m+1))
-        X = svd.sinkhorn_diff(S, 10).view((n+1)*(m+1), 1)
+        #S = optim.from_cost_to_similarity_exp(c.view(n+1, m+1))
+        X = optim.sinkhorn_diff(S, 10).view((n+1)*(m+1), 1)
         if self.rings_andor_fw == 'sans_rings_avec_fw':
-            X = svd.franck_wolfe(X, D, c, 5, 10, n, m)
+            X = optim.franck_wolfe(X, D, c, 5, 10, n, m)
 
         normalize_factor = 1.0
         if self.normalize:
