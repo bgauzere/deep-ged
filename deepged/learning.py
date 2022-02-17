@@ -73,10 +73,10 @@ def tensorboardExport(writer, epoch, train_loss, valid_loss, node_ins_del, edge_
     writer.flush()
 
 
-def GEDclassification(model, Gs, nb_epochs, device, y, rings_andor_fw,
-                      verbosity=True, learning_rate=0.01,
-                      size_batch=None,
-                      constraint='no_constraint'):
+def learn_costs_for_classification(model, Gs, nb_epochs, device, y, rings_andor_fw,
+                                   verbosity=True, learning_rate=0.01,
+                                   size_batch=None,
+                                   constraint='no_constraint'):
     """ Run nb_epochs epochs pour fiter les couts de la ged
     TODO : function trop longue, à factoriser
     """

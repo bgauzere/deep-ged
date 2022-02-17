@@ -12,7 +12,7 @@ from gklearn.utils.graphfiles import loadDataset
 from gklearn.dataset import TUDataset_META
 from gklearn.dataset import Dataset
 
-from deepged.learning import GEDclassification
+from deepged.learning import learn_costs_for_classification
 from deepged.label_manager import compute_extended_labels, build_node_dictionnary
 from deepged.model import GedLayer
 
@@ -180,7 +180,7 @@ if __name__ == "__main__":
     if(args.verbosity and args.device == 'gpu'):
         GPUtil.showUtilization()
 
-    cost_ins_del, cost_node_sub, cost_edge_sub, loss_valid, loss_train = GEDclassification(
+    cost_ins_del, cost_node_sub, cost_edge_sub, loss_valid, loss_train = learn_costs_for_classification(
         model, Gs, nb_epochs, device, y, rings_andor_fw,
         verbosity=args.verbosity, size_batch=size_batch, constraint=constraint)
 
