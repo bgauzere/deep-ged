@@ -18,12 +18,41 @@ class Ged():
         nb_edge_labels : number of unique labels on edges
         node_label : name of label used to get node labels
         '''
+
+        def _rearrange_costs(costs):
+            '''
+            Translate compact version of costs to version used in the class
+            Populate cndl, cedl, cns and ces
+            '''
+            nonlocal self
+            np_cns = torch.Tensor(costs[0])
+            self.cndl = torch.Tensor(costs[1])
+            np_ces = torch.Tensor(costs[2])
+            self.cedl = torch.Tensor(costs[3])
+
+            self.cns = torch.zeros((self.nb_node_labels, self.nb_node_labels))
+            upper_part = torch.triu_indices(
+                self.cns.shape[0], self.cns.shape[1], offset=1)
+            self.cns[upper_part[0], upper_part[1]] = np_cns
+            self.cns = self.cns + self.cns.T
+
+            if self.nb_edge_labels > 1:
+                self.ces = torch.zeros(
+                    (self.nb_edge_labels, self.nb_edge_labels))
+                upper_part = torch.triu_indices(
+                    self.ces.shape[0], self.ces.shape[1], offset=1)
+                self.ces[upper_part[0], upper_part[1]] = np_ces
+                self.ces = self.ces + self.ces.T
+            else:
+                self.ces = torch.zeros(0)
+        # fin _rearrange_costs
+
         # WARNING: pourquoi on a pas de dict sur les aretes ? on considere que les aretes sont directement étiquetées par des entiers ?
         self.nb_node_labels = len(node_labels_dict)
         self.node_labels_dict = node_labels_dict
         self.nb_edge_labels = nb_edge_labels
         self.node_label = node_label
-        self._rearrange_costs(costs)
+        _rearrange_costs(costs)
 
     def _matrix_edge_ins_del(self, A1, A2):
         '''
@@ -86,32 +115,6 @@ class Ged():
         mask = torch.diag(torch.ones_like(D))
         C = mask * torch.diag(D) + (1. - mask) * C
         return C
-
-    def _rearrange_costs(self, costs):
-        '''
-        Translate compact version of costs to version used in the class
-        Populate cndl, cedl, cns and ces
-        '''
-
-        np_cns = torch.Tensor(costs[0])
-        self.cndl = torch.Tensor(costs[1])
-        np_ces = torch.Tensor(costs[2])
-        self.cedl = torch.Tensor(costs[3])
-
-        self.cns = torch.zeros((self.nb_node_labels, self.nb_node_labels))
-        upper_part = torch.triu_indices(
-            self.cns.shape[0], self.cns.shape[1], offset=1)
-        self.cns[upper_part[0], upper_part[1]] = np_cns
-        self.cns = self.cns + self.cns.T
-
-        if self.nb_edge_labels > 1:
-            self.ces = torch.zeros((self.nb_edge_labels, self.nb_edge_labels))
-            upper_part = torch.triu_indices(
-                self.ces.shape[0], self.ces.shape[1], offset=1)
-            self.ces[upper_part[0], upper_part[1]] = np_ces
-            self.ces = self.ces + self.ces.T
-        else:
-            self.ces = torch.zeros(0)
 
     def _compute_distance(self, A_g1, A_g2, n, m, labels_1, labels_2):
 

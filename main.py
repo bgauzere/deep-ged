@@ -216,13 +216,14 @@ if __name__ == "__main__":
               cost_node_sub, repr(args))
 
     # Let's classify
-    costs = [cost_node_sub, cost_ins_del[:, 0],
-             cost_edge_sub, cost_ins_del[:, 1]]
+    costs = [cost_node_sub[-1, :], cost_ins_del[-1, 0].reshape(-1, 1),
+             cost_edge_sub[-1, :], cost_ins_del[-1, 1].reshape(-1, 1)]
 
     ged = Ged(costs, node_labels, nb_edge_labels, node_label)
     print(ged.compute_distance(Gs[1], Gs[2]))
     # compute ged between train and test
     D = ged.compute_distance_between_sets(graphs_train, graphs_test)
+    print(D)
     # classify test
     # measure errors
     # save
