@@ -16,6 +16,8 @@ from deepged.learning import learn_costs_for_classification
 from deepged.label_manager import compute_extended_labels, build_node_dictionnary
 from deepged.model import GedLayer
 from deepged.dataset import dataset_split
+
+from deepged.ged import Ged
 matplotlib.use('TkAgg')
 
 
@@ -212,3 +214,12 @@ if __name__ == "__main__":
               cost_node_sub, repr(args))
 
     # Let's classify
+    costs = [cost_node_sub, cost_ins_del[:, 0],
+             cost_edge_sub, cost_ins_del[:, 1]]
+
+    ged = Ged(costs, node_labels, nb_edge_labels, node_label)
+    print(ged.compute_distance(Gs[1], Gs[2]))
+    # compute ged between train and test
+    # classify test
+    # measure errors
+    # save
