@@ -58,7 +58,6 @@ class GedLayer(nn.Module):
                 edge_weights, dtype=torch.float))
         })
 
-        
     def forward(self, graphs):
         '''
         :param graphs: tuple de graphes networkx
@@ -118,8 +117,10 @@ class GedLayer(nn.Module):
                              2.0*edge_ins_del*torch.ones_like(self.params['edge_weights'])))
              )])
     """
-        torch.clamp(input=self.params['edge_weights'],min=0.0,max=2*edge_ins_del,out=self.params['edge_weights'])
-        torch.clamp(input=self.params['node_weights'],min=0.0,max=2*node_ins_del,out=self.params['node_weights'])
+        torch.clamp(input=self.params['edge_weights'], min=0.0,
+                    max=2*edge_ins_del, out=self.params['edge_weights'])
+        torch.clamp(input=self.params['node_weights'], min=0.0,
+                    max=2*node_ins_del, out=self.params['node_weights'])
 
     def from_weights_to_costs(self):
         """
@@ -159,6 +160,7 @@ class GedLayer(nn.Module):
         '''
         Retourne une matrice carrée de taile (n+1) * (m +1) contenant les couts sur les noeuds et les aretes
         TODO : a analyser, tester et documenter
+        ATTENTION : fonction copier/cller dans ged.py !
         '''
         n = card[0]
         m = card[1]
