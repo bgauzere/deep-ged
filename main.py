@@ -186,7 +186,9 @@ if __name__ == "__main__":
     train_set, test_set = dataset_split(
         Gs, y, train_size=.7, test_size=.3, shuffle=True)
     indices_train, labels_train = train_set
+    indices_test, labels_test = test_set
     graphs_train = [Gs[i] for i in indices_train]
+    graphs_test = [Gs[i] for i in indices_test]
 
     cost_ins_del, cost_node_sub, \
         cost_edge_sub, loss_valid, loss_train = learn_costs_for_classification(
@@ -220,6 +222,7 @@ if __name__ == "__main__":
     ged = Ged(costs, node_labels, nb_edge_labels, node_label)
     print(ged.compute_distance(Gs[1], Gs[2]))
     # compute ged between train and test
+    D = ged.compute_distance_between_sets(graphs_train, graphs_test)
     # classify test
     # measure errors
     # save

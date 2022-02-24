@@ -1,4 +1,6 @@
+import numpy as np
 import torch
+from tqdm import tqdm
 from deepged.utils import from_networkx_to_tensor
 import deepged.optim as optim
 
@@ -111,18 +113,8 @@ class Ged():
         else:
             self.ces = torch.zeros(0)
 
-    def compute_distance(self, g1, g2):
-        '''
-        G1,G2 : networkx graphs
-        '''
+    def _compute_distance(self, A_g1, A_g2, n, m, labels_1, labels_2):
 
-        A_g1, labels_1 = from_networkx_to_tensor(
-            g1, self.node_labels_dict, self.node_label)
-        A_g2, labels_2 = from_networkx_to_tensor(
-            g2, self.node_labels_dict, self.node_label)
-
-        n = g1.order()
-        m = g2.order()
         # a externatliser
         C = self._construct_cost_matrix(
             A_g1, A_g2, [n, m], [labels_1, labels_2])
@@ -143,8 +135,34 @@ class Ged():
         ged = (.5 * v.T @ D @ v + c.T @ v)/normalize_factor
         return ged
 
+    def compute_distance(self, g1, g2):
+        '''
+        G1,G2 : networkx graphs
+        '''
+        A_g1, labels_1 = from_networkx_to_tensor(
+            g1, self.node_labels_dict, self.node_label)
+        A_g2, labels_2 = from_networkx_to_tensor(
+            g2, self.node_labels_dict, self.node_label)
+        return self._compute_distance(A_g1, A_g2, g1.order(), g2.order(),
+                                      labels_1, labels_2)
+
     def compute_distance_between_sets(self, list_of_graphs_1, list_of_graphs_2):
         '''
         Calcule les ged entre list_of_graphs_1 et list_of_graphs_2 donnés les couts
+        returns : a numpy distance matrix
         '''
-        # TODO Convertir ce module en classe pour éconmiser le pasasge de params
+        networkx_graphs_2 = [from_networkx_to_tensor(
+            g, self.node_labels_dict, self.node_label) for g in list_of_graphs_2]
+
+        distance_matrix = np.empty(
+            (len(list_of_graphs_1), len(list_of_graphs_2)))
+
+        for i, g_i in enumerate(list_of_graphs_1):
+            A_gi, labels_i = from_networkx_to_tensor(
+                g_i, self.node_labels_dict, self.node_label)
+            n = g_i.order()
+            for j, [A_gj, labels_j] in enumerate(networkx_graphs_2):
+                m = int(np.sqrt(A_gj.shape[1]))  # sale
+                distance_matrix[i, j] = self._compute_distance(
+                    A_gi, A_gj, n, m, labels_i, labels_j)
+        return distance_matrix
