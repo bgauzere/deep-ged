@@ -20,7 +20,7 @@ def normalize(ged):
     return ged
 
 
-def forward_data_model(data, model, Gs, device):
+def forward_data_model(data, model, Gs, device, verbosity=False):
     '''Effectue une passe forward d'un loader (train, valid ou test)
     et renvoie l'ensemble des ged et des labels si meme classe ou
     non
@@ -35,7 +35,7 @@ def forward_data_model(data, model, Gs, device):
     '''
     ged_pred = torch.zeros(len(data))
     # Forward pass: Compute predicted y by passing data to the model
-    for k in tqdm(range(len(data))):
+    for k in tqdm(range(len(data)), disable=not verbosity):
         g1_idx, g2_idx = data[k]
         ged_pred[k] = model((Gs[g1_idx], Gs[g2_idx]))
 
@@ -45,6 +45,7 @@ def forward_data_model(data, model, Gs, device):
 
 
 def tensorboardExport(writer, epoch, train_loss, valid_loss, node_ins_del, edge_ins_del, node_costs, edge_costs):
+    # TODO : à refactoriser
     # Sauvegarde de la loss dans le tensorboard
     writer.add_scalar('Evolution of the loss/train', train_loss, epoch)
     # Sauvegarde de la loss dans le tensorboard
@@ -112,7 +113,7 @@ def learn_costs_for_classification(model, Gs, nb_epochs, device, y, rings_andor_
             nb_train += len(data)
             # TODO : du coup train_labels devrait être inutile
             ged_pred = forward_data_model(
-                data, model, Gs, device)
+                data, model, Gs, device, verbosity)
             loss = criterion(ged_pred, labels)
             if constraint == 'add_to_loss':
                 triangular_inequality = criterion_tri(
@@ -146,7 +147,7 @@ def learn_costs_for_classification(model, Gs, nb_epochs, device, y, rings_andor_
                 edge_sub[epoch][k] = edge_costs[p][q]
                 k = k + 1
 
-        current_train_loss = current_train_loss.item()
+        #current_train_loss = current_train_loss.item()
         loss_train[epoch] = current_train_loss
 
         # The validation part :

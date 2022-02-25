@@ -149,7 +149,7 @@ class Ged():
         return self._compute_distance(A_g1, A_g2, g1.order(), g2.order(),
                                       labels_1, labels_2)
 
-    def compute_distance_between_sets(self, list_of_graphs_1, list_of_graphs_2):
+    def compute_distance_between_sets(self, list_of_graphs_1, list_of_graphs_2, verbosity=True):
         '''
         Calcule les ged entre list_of_graphs_1 et list_of_graphs_2 donnés les couts
         returns : a numpy distance matrix
@@ -160,7 +160,7 @@ class Ged():
         distance_matrix = np.empty(
             (len(list_of_graphs_1), len(list_of_graphs_2)))
 
-        for i, g_i in enumerate(list_of_graphs_1):
+        for i, g_i in tqdm(enumerate(list_of_graphs_1), disable=not verbosity):
             A_gi, labels_i = from_networkx_to_tensor(
                 g_i, self.node_labels_dict, self.node_label)
             n = g_i.order()

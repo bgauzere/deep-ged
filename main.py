@@ -1,3 +1,4 @@
+from deepged.inference import evaluate_D
 import matplotlib.gridspec as gridspec
 import os
 import sys
@@ -82,9 +83,10 @@ def visualize(cost_ins_del, cost_node_sub, cost_edge_sub,
 
 def save_data(directory, loss_valid, loss_train,
               cost_ins_del, cost_edge_sub, cost_node_sub,
-              args):
+              args, D_train, D_test, clf, perfs):
     """
     Sauvegarde l'ensemble du learning aisni que les poids optimisés
+    TODO : Code a factoriser !
     """
 
     torch.save(loss_valid, os.path.join(
@@ -99,8 +101,12 @@ def save_data(directory, loss_valid, loss_train,
         directory, "cost_edge_sub"), pickle_module=pkl)
     torch.save(cost_node_sub, os.path.join(
         directory, "cost_node_sub"), pickle_module=pkl)
+
     with open(os.path.join(directory, "arguments.txt"), "w") as f:
         f.write(args)
+
+    pickle_filename = os.path.join(directory, "data_prediction.pkl")
+    pkl.dump([D_train, D_test, clf, perfs], open(pickle_filename, "wb"))
 
 
 def load_dataset(dataset_path):
@@ -183,12 +189,15 @@ if __name__ == "__main__":
         GPUtil.showUtilization()
 
     # Preparation of dataset
+    # TODO -> mettre dans une fonction + dataclasses
     train_set, test_set = dataset_split(
         Gs, y, train_size=.7, test_size=.3, shuffle=True)
     indices_train, labels_train = train_set
     indices_test, labels_test = test_set
     graphs_train = [Gs[i] for i in indices_train]
     graphs_test = [Gs[i] for i in indices_test]
+    y_train = [y[i] for i in indices_train]
+    y_test = [y[i] for i in indices_test]
 
     cost_ins_del, cost_node_sub, \
         cost_edge_sub, loss_valid, loss_train = learn_costs_for_classification(
@@ -196,6 +205,23 @@ if __name__ == "__main__":
             verbosity=args.verbosity,
             size_batch=size_batch, constraint=constraint)
 
+    if(args.verbosity):
+        print(loss_train, loss_valid)
+
+    # Let's classify
+    costs = [cost_node_sub[-1, :], cost_ins_del[-1, 0].reshape(-1, 1),
+             cost_edge_sub[-1, :], cost_ins_del[-1, 1].reshape(-1, 1)]
+
+    ged = Ged(costs, node_labels, nb_edge_labels, node_label)
+    # compute ged between train and test
+    D_train = ged.compute_distance_between_sets(
+        graphs_train, graphs_train, args.verbosity)
+    D_test = ged.compute_distance_between_sets(
+        graphs_test, graphs_train, args.verbosity)
+    perf_train, perf_test, clf = evaluate_D(
+        D_train, y_train, D_test, y_test, mode='classif')
+    print(perf_train, perf_test)
+    # We save everything
     # Sauvegarde du modele
     default_directory = "save_runs"
     if(not os.path.isdir(default_directory)):
@@ -204,26 +230,13 @@ if __name__ == "__main__":
     path = os.path.join(default_directory, time_stamp)
     os.mkdir(path)
     directory = path
-
-    if(args.verbosity):
-        print(loss_train, loss_valid)
-
     visualize(cost_ins_del, cost_node_sub, cost_edge_sub,
               loss_train, loss_valid,
               directory, args.verbosity)
-    # We save the losses into pickle files
+
     save_data(directory, loss_valid, loss_train, cost_ins_del, cost_edge_sub,
-              cost_node_sub, repr(args))
+              cost_node_sub, repr(args), D_train, D_test, clf, [perf_train, perf_test])
 
-    # Let's classify
-    costs = [cost_node_sub[-1, :], cost_ins_del[-1, 0].reshape(-1, 1),
-             cost_edge_sub[-1, :], cost_ins_del[-1, 1].reshape(-1, 1)]
-
-    ged = Ged(costs, node_labels, nb_edge_labels, node_label)
-    print(ged.compute_distance(Gs[1], Gs[2]))
-    # compute ged between train and test
-    D = ged.compute_distance_between_sets(graphs_train, graphs_test)
-    print(D)
     # classify test
     # measure errors
     # save
