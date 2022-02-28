@@ -95,7 +95,7 @@ def franck_wolfe(x0, D, c, offset, kmax, n, m):
         # security check if b is not a local minima (does not occur with real hungarian)
         if alpha > 0:
             if k <= 3 and alpha >= 1e-3:
-                sys.stderr.write('alpha positif(', k, ')', alpha.item())
+                sys.stderr.write(f"alpha positif('{k}') : {alpha.item()}")
             """
             if k==0:
                 print('T=',T)
