@@ -19,7 +19,6 @@ from deepged.model import GedLayer
 from deepged.dataset import dataset_split
 
 from deepged.ged import Ged
-matplotlib.use('TkAgg')
 
 
 def visualize(cost_ins_del, cost_node_sub, cost_edge_sub,
