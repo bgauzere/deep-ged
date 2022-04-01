@@ -7,6 +7,7 @@ import torch
 import GPUtil
 import matplotlib.pyplot as plt
 import matplotlib
+import networkx as nx
 import argparse
 from datetime import datetime
 from gklearn.utils.graphfiles import loadDataset
@@ -17,7 +18,7 @@ from deepged.learning import learn_costs_for_classification
 from deepged.label_manager import compute_extended_labels, build_node_dictionnary
 from deepged.model import GedLayer
 from deepged.dataset import dataset_split
-
+import numpy as np
 from deepged.ged import Ged
 
 
@@ -120,7 +121,7 @@ def load_dataset(dataset_path):
         return loadDataset(dataset_path)
 
 
-if __name__ == "__main__":
+def main():
 
     dico_device = {"cpu": 'cpu', 'gpu': 'cuda:0'}
     dico_calc = {0: 'rings_sans_fw', 1: 'sans_rings_avec_fw',
@@ -165,6 +166,13 @@ if __name__ == "__main__":
 
     Gs, y = load_dataset(path_dataset)
 
+    print("Taille du dataset : ", len(Gs))
+    if "MUTAG" in path_dataset:
+        y_1 = [idx for idx in range(len(y)) if y[idx] == 1]
+        y_m1 = [idx for idx in range(len(y)) if y[idx] == -1]
+        y_idx = y_1[0:67] + y_m1[0:33]  # pour avoir 100 graphes.
+        y = [y[b] for b in y_idx]
+        Gs = [Gs[g] for g in y_idx]
     node_label = args.label_node
     edge_label = args.label_edge
     # Utile pour rings ? du coup on a un cout pour chaque extended_label
@@ -206,10 +214,36 @@ if __name__ == "__main__":
 
     if(args.verbosity):
         print(loss_train, loss_valid)
+    #
+    # cost_node_sub[-1,:] = 1
+    # cost_ins_del[-1,0] = 2
+    # cost_edge_sub[-1,:] = 1
+    # cost_ins_del[-1,1] = 3
 
     # Let's classify
+
+    # node_costs, node_ins_del, edge_costs, edge_ins_del = model.from_weights_to_costs()
+    # k = 0
+    # node_sub = np.empty((1,int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
+    # edge_sub = np.empty((1,int(edge_costs.shape[0] * (edge_costs.shape[0] - 1) / 2)))
+    # for p in range(node_costs.shape[0]):
+    #     for q in range(p + 1, node_costs.shape[0]):
+    #         node_sub[0][k] = node_costs[p][q]
+    #         k = k + 1
+    # k = 0
+    # for p in range(edge_costs.shape[0]):
+    #     for q in range(p + 1, edge_costs.shape[0]):
+    #         edge_sub[0][k] = edge_costs[p][q]
+    #         k = k + 1
+    # cost_ins_del = np.empty((1,2))
+    # cost_ins_del[0,0] = node_ins_del
+    # cost_ins_del[0,1] = edge_ins_del
+    #
+    # costs = [node_sub[0,:], cost_ins_del[0,0].reshape(-1, 1),
+    #         edge_sub[0,:], cost_ins_del[0,0].reshape(-1, 1)]
+    #
     costs = [cost_node_sub[-1, :], cost_ins_del[-1, 0].reshape(-1, 1),
-             cost_edge_sub[-1, :], cost_ins_del[-1, 1].reshape(-1, 1)]
+            cost_edge_sub[-1, :], cost_ins_del[-1, 1].reshape(-1, 1)]
 
     ged = Ged(costs, node_labels, nb_edge_labels, node_label)
     # compute ged between train and test
@@ -236,6 +270,18 @@ if __name__ == "__main__":
     save_data(directory, loss_valid, loss_train, cost_ins_del, cost_edge_sub,
               cost_node_sub, repr(args), D_train, D_test, clf, [perf_train, perf_test])
 
+    return perf_train, perf_test
     # classify test
     # measure errors
     # save
+
+if __name__ == "__main__":
+
+    lis_train = []
+    lis_test = []
+    for i in range(10):
+        perf_app, perf_test = main()
+        lis_train.append(perf_app)
+        lis_test.append(perf_test)
+    print("Perf in train : ", np.mean(lis_train),"±",np.std(lis_train))
+    print("Perf in test : ", np.mean(lis_test),"±",np.std(lis_test))
