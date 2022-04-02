@@ -11,12 +11,20 @@ def dataset_split(graphs, y,
     three datasets with indices of graphs in Gs
     '''
     graph_idx = torch.arange(0, len(graphs), dtype=torch.int64)
-    [train_graph, test_graph,
-     train_label, test_label] = train_test_split(graph_idx, y,
-                                                 train_size=train_size,
-                                                 test_size=test_size,
-                                                 shuffle=shuffle,
-                                                 stratify=y)
+    try:
+        [train_graph, test_graph,
+         train_label, test_label] = train_test_split(graph_idx, y,
+                                                     train_size=train_size,
+                                                     test_size=test_size,
+                                                     shuffle=shuffle,
+                                                     stratify=y)
+    except ValueError:
+        [train_graph, test_graph,
+         train_label, test_label] = train_test_split(graph_idx, y,
+                                                     train_size=train_size,
+                                                     test_size=test_size,
+                                                     shuffle=shuffle)
+
     dataset_train = (train_graph, train_label)
     dataset_test = (test_graph, test_label)
     return dataset_train, dataset_test
@@ -35,7 +43,7 @@ def build_pairs_of_graphs_for_classification(graph_indices, y, avoid_pair_of_neg
         paired_y.append(1)  # forcément meme classe
         for idx_j, y_j in zip(graph_indices, y):
             if (idx_i < idx_j):  # on rajoute qu'une fois un couple
-                if not (avoid_pair_of_negative and y_i == 0 and y_j == 0):
+                if not (avoid_pair_of_negative and y_i != 1 and y_j !=1):
                     couples_train.append([idx_i, idx_j])
                     paired_y.append(1 if (y_i == y_j) else -1)
     return torch.tensor(couples_train), torch.tensor(paired_y)

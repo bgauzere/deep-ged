@@ -41,8 +41,7 @@ class GedLayer(nn.Module):
         """
         # Partie tri sup d'une matrice de nb_labels par nb_labels
         nb_node_pair_label = int(self.nb_labels * (self.nb_labels - 1) / 2.0)
-        nb_edge_pair_label = int(
-            self.nb_edge_labels * (self.nb_edge_labels - 1) / 2)
+        nb_edge_pair_label = int(self.nb_edge_labels * (self.nb_edge_labels - 1) / 2)
         # Les weights sont les params de notre réseau
         # +1 pour le cout d'insertion/suppression
         node_weights = (1e-2)*(1.0+.1 *

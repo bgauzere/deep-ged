@@ -94,7 +94,7 @@ def learn_costs_for_classification(model, Gs, nb_epochs, device, y, rings_andor_
     # TODO ; a documenter et mettre dansu ne fonction
     # Pour sauvegarde :
     now = datetime.now()
-    writer = SummaryWriter("runs/data_" + now.strftime("%d-%m_%H-%M-%S"))
+    # writer = SummaryWriter("runs/data_" + now.strftime("%d-%m_%H-%M-%S"))
 
     ins_del = np.empty((nb_epochs, 2))
     node_sub = np.empty(
@@ -174,13 +174,13 @@ def learn_costs_for_classification(model, Gs, nb_epochs, device, y, rings_andor_
                 f"loss.item of the valid={current_valid_loss} - {current_valid_loss/nb_valid}")
 
             # Sauvegarde
-        tensorboardExport(writer, epoch, current_train_loss, current_valid_loss,
-                          node_ins_del.item(), edge_ins_del.item(), node_costs, edge_costs)
-
-        tensorboardExport(writer, epoch, current_train_loss, current_valid_loss,
-                          node_ins_del.item(), edge_ins_del.item(), node_costs, edge_costs)
-        # Fermeture du tensorboard
-        writer.close()
+        # tensorboardExport(writer, epoch, current_train_loss, current_valid_loss,
+        #                   node_ins_del.item(), edge_ins_del.item(), node_costs, edge_costs)
+        #
+        # tensorboardExport(writer, epoch, current_train_loss, current_valid_loss,
+        #                   node_ins_del.item(), edge_ins_del.item(), node_costs, edge_costs)
+        # # Fermeture du tensorboard
+        # writer.close()
 
         if constraint == 'projection' and (torch.any(model.params['edge_weights'] < 0) or torch.any(model.params['node_weights'] < 0) or torch.any(model.params['edge_weights'][:-1] > 2.0*model.params['edge_weights'][-1]) or torch.any(model.params['node_weights'] > 2.0*node_ins_del)):
             with torch.no_grad():
