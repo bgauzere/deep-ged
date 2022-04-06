@@ -19,7 +19,33 @@ from deepged.label_manager import compute_extended_labels, build_node_dictionnar
 from deepged.model import GedLayer
 from deepged.dataset import dataset_split
 import numpy as np
+matplotlib.use('TkAgg')
 from deepged.ged import Ged
+
+
+def plot_labels(Gs, node_label, edge_label, dict_nodes, set_edge_label):
+    print(dict_nodes)
+    print(set_edge_label)
+    nb_node = np.zeros(len(dict_nodes))
+    nb_edge = np.zeros(len(set_edge_label))
+    for G in Gs:
+        A = nx.to_scipy_sparse_matrix(G, dtype=int, weight=edge_label).todense()
+        lab = [dict_nodes[G.nodes[v][node_label]] for v in nx.nodes(G)]
+        for i in lab:
+            nb_node[i] +=1
+        for i in range(A.shape[0]):
+            for j in range(A.shape[1]):
+                if A[i,j] != 0:
+                    nb_edge[A[i,j]-1] += 1
+    print(nb_node)
+    print(nb_edge)
+    plt.subplot(211)
+    plt.bar( [i for i in range(len(nb_node))], nb_node)#, [i for i in range(len(nb_node))])
+    plt.title("node_labels")
+    plt.subplot(212)
+    plt.bar( [i for i in range(len(nb_edge))], nb_edge)#, [i for i in range(len(nb_node))])
+    plt.title("edge labels")
+    plt.show()
 
 
 def visualize(cost_ins_del, cost_node_sub, cost_edge_sub,
@@ -138,7 +164,7 @@ def main():
                         help='Enable normalization', action='store_true', default=True)
 
     parser.add_argument("-c",
-                        '--calculation', help='Select the calculation method : Rings only (0) / Frank Wolfe only (1) / both (2) / none (3) ', type=int, choices=[0, 1, 2, 3], default=3)
+                        '--calculation', help='Select the calculation method : Rings only (0) / Frank Wolfe only (1) / both (2) / none (3) / random (4) / default (5)', type=int, choices=[0, 1, 2, 3, 4, 5], default=3)
     parser.add_argument("-ln", '--label_node', help='Labels for the nodes. Depends on the dataset file',
                         nargs='?', type=str, default='extended_label')
     parser.add_argument("-le", '--label_edge', help='Labels for the edges. Depends on the dataset file',
@@ -186,10 +212,15 @@ def main():
         Gs, node_label, edge_label)
     nb_labels = len(node_labels)
 
+    plot_labels(Gs, node_label, edge_label, node_labels, [i for i in range(nb_edge_labels)])
+
+
     model = GedLayer(nb_labels, nb_edge_labels, node_labels, rings_andor_fw,
                      normalize=args.normalize,
                      node_label=node_label,
                      device=dico_device[args.device])
+
+
 
     # Getting the GPU status :
     if(args.verbosity and args.device == 'gpu'):
@@ -206,44 +237,52 @@ def main():
     y_train = [y[i] for i in indices_train]
     y_test = [y[i] for i in indices_test]
 
-    cost_ins_del, cost_node_sub, \
-        cost_edge_sub, loss_valid, loss_train = learn_costs_for_classification(
-            model, graphs_train, nb_epochs, device, labels_train, rings_andor_fw,
-            verbosity=args.verbosity,
-            size_batch=size_batch, constraint=constraint)
+    if(args.calculation <= 3):
+        cost_ins_del, cost_node_sub, \
+            cost_edge_sub, loss_valid, loss_train, epoch = learn_costs_for_classification(
+                model, graphs_train, nb_epochs, device, labels_train, rings_andor_fw,
+                verbosity=args.verbosity,
+                size_batch=size_batch, constraint=constraint)
+        # print(cost_ins_del, cost_node_sub, cost_edge_sub)
+        costs = [cost_node_sub[epoch, :], cost_ins_del[epoch, 0].reshape(-1, 1),
+                 cost_edge_sub[epoch, :], cost_ins_del[epoch, 0].reshape(-1, 1)]
 
-    if(args.verbosity):
-        print(loss_train, loss_valid)
-    #
-    # cost_node_sub[-1,:] = 1
-    # cost_ins_del[-1,0] = 2
-    # cost_edge_sub[-1,:] = 1
-    # cost_ins_del[-1,1] = 3
+        if(args.verbosity):
+            print(loss_train, loss_valid)
 
-    # Let's classify
+    elif(args.calculation >= 4):
 
-    # node_costs, node_ins_del, edge_costs, edge_ins_del = model.from_weights_to_costs()
-    # k = 0
-    # node_sub = np.empty((1,int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
-    # edge_sub = np.empty((1,int(edge_costs.shape[0] * (edge_costs.shape[0] - 1) / 2)))
-    # for p in range(node_costs.shape[0]):
-    #     for q in range(p + 1, node_costs.shape[0]):
-    #         node_sub[0][k] = node_costs[p][q]
-    #         k = k + 1
-    # k = 0
-    # for p in range(edge_costs.shape[0]):
-    #     for q in range(p + 1, edge_costs.shape[0]):
-    #         edge_sub[0][k] = edge_costs[p][q]
-    #         k = k + 1
-    # cost_ins_del = np.empty((1,2))
-    # cost_ins_del[0,0] = node_ins_del
-    # cost_ins_del[0,1] = edge_ins_del
-    #
-    # costs = [node_sub[0,:], cost_ins_del[0,0].reshape(-1, 1),
-    #         edge_sub[0,:], cost_ins_del[0,0].reshape(-1, 1)]
-    #
-    costs = [cost_node_sub[-1, :], cost_ins_del[-1, 0].reshape(-1, 1),
-            cost_edge_sub[-1, :], cost_ins_del[-1, 1].reshape(-1, 1)]
+        node_costs, node_ins_del, edge_costs, edge_ins_del = model.from_weights_to_costs()
+        k = 0
+        node_sub = np.empty((1,int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
+        edge_sub = np.empty((1,int(edge_costs.shape[0] * (edge_costs.shape[0] - 1) / 2)))
+        for p in range(node_costs.shape[0]):
+            for q in range(p + 1, node_costs.shape[0]):
+                node_sub[0][k] = node_costs[p][q]
+                k = k + 1
+        k = 0
+        for p in range(edge_costs.shape[0]):
+            for q in range(p + 1, edge_costs.shape[0]):
+                edge_sub[0][k] = edge_costs[p][q]
+                k = k + 1
+        cost_ins_del = np.empty((1,2))
+        cost_ins_del[0,0] = node_ins_del
+        cost_ins_del[0,1] = edge_ins_del
+
+        if(rings_andor_fw == 4):
+            costs = [node_sub[0,:], cost_ins_del[0,0].reshape(-1, 1),
+                    edge_sub[0,:], cost_ins_del[0,0].reshape(-1, 1)]
+
+        elif(rings_andor_fw == 5):
+
+            node_sub[-1,:] = 1
+            cost_ins_del[-1,0] = 2
+            edge_sub[-1,:] = 1
+            cost_ins_del[-1,1] = 3
+
+            costs = [node_sub[-1, :], cost_ins_del[-1, 0].reshape(-1, 1),
+                     edge_sub[-1, :], cost_ins_del[-1, 1].reshape(-1, 1)]
+
 
     ged = Ged(costs, node_labels, nb_edge_labels, node_label)
     # compute ged between train and test
