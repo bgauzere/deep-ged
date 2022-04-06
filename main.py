@@ -206,12 +206,6 @@ def main():
 
     Gs, y = load_dataset(path_dataset)
 
-    if "MUTAG" in path_dataset:
-        y_1 = [idx for idx in range(len(y)) if y[idx] == 1]
-        y_m1 = [idx for idx in range(len(y)) if y[idx] == -1]
-        y_idx = y_1[0:67] + y_m1[0:33]  # pour avoir 100 graphes.
-        y = [y[b] for b in y_idx]
-        Gs = [Gs[g] for g in y_idx]
     node_label = args.label_node
     edge_label = args.label_edge
     # Utile pour rings ? du coup on a un cout pour chaque extended_label
@@ -283,15 +277,15 @@ def main():
         cost_ins_del[0, 1] = edge_ins_del
 
         if(rings_andor_fw == 4):
-            costs = [node_sub[0,:], cost_ins_del[0,0].reshape(-1, 1),
-                    edge_sub[0,:], cost_ins_del[0,0].reshape(-1, 1)]
+            costs = [node_sub[0, :], cost_ins_del[0, 0].reshape(-1, 1),
+                     edge_sub[0, :], cost_ins_del[0, 0].reshape(-1, 1)]
 
         elif(rings_andor_fw == 5):
 
-            node_sub[-1,:] = 1
-            cost_ins_del[-1,0] = 2
-            edge_sub[-1,:] = 1
-            cost_ins_del[-1,1] = 3
+            node_sub[-1, :] = 1
+            cost_ins_del[-1, 0] = 2
+            edge_sub[-1, :] = 1
+            cost_ins_del[-1, 1] = 3
 
             costs = [node_sub[-1, :], cost_ins_del[-1, 0].reshape(-1, 1),
                      edge_sub[-1, :], cost_ins_del[-1, 1].reshape(-1, 1)]
