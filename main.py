@@ -219,9 +219,6 @@ def main():
         Gs, node_label, edge_label)
     nb_labels = len(node_labels)
 
-    plot_labels(Gs, node_label, edge_label, node_labels,
-                [i for i in range(nb_edge_labels)])
-
     model = GedLayer(nb_labels, nb_edge_labels, node_labels, rings_andor_fw,
                      normalize=args.normalize,
                      node_label=node_label,
@@ -244,14 +241,14 @@ def main():
 
     if(args.calculation <= 3):
         cost_ins_del, cost_node_sub, \
-            cost_edge_sub, loss_valid, loss_train, epoch = learn_costs_for_classification(
+            cost_edge_sub, loss_valid, \
+            loss_train, epoch = learn_costs_for_classification(
                 model, graphs_train, nb_epochs, device, labels_train, rings_andor_fw,
                 verbosity=args.verbosity,
                 size_batch=size_batch, constraint=constraint)
         # print(cost_ins_del, cost_node_sub, cost_edge_sub)
         costs = [cost_node_sub[epoch, :], cost_ins_del[epoch, 0].reshape(-1, 1),
                  cost_edge_sub[epoch, :], cost_ins_del[epoch, 0].reshape(-1, 1)]
-
         if(args.verbosity):
             print(loss_train, loss_valid)
 
@@ -290,7 +287,6 @@ def main():
             costs = [node_sub[-1, :], cost_ins_del[-1, 0].reshape(-1, 1),
                      edge_sub[-1, :], cost_ins_del[-1, 1].reshape(-1, 1)]
 
-
     ged = Ged(costs, node_labels, nb_edge_labels, node_label)
     # compute ged between train and test
     D_train = ged.compute_distance_between_sets(
@@ -321,6 +317,7 @@ def main():
     # measure errors
     # save
 
+
 if __name__ == "__main__":
 
     lis_train = []
@@ -329,5 +326,5 @@ if __name__ == "__main__":
         perf_app, perf_test = main()
         lis_train.append(perf_app)
         lis_test.append(perf_test)
-    print("Perf in train : ", np.mean(lis_train),"±",np.std(lis_train))
-    print("Perf in test : ", np.mean(lis_test),"±",np.std(lis_test))
+    print("Perf in train : ", np.mean(lis_train), "±", np.std(lis_train))
+    print("Perf in test : ", np.mean(lis_test), "±", np.std(lis_test))

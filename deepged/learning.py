@@ -10,6 +10,30 @@ from deepged.triangular_losses import TriangularConstraint
 from deepged.dataset import initialize_dataset
 
 
+def save_costs(cur_node_ins_del, cur_edge_ins_del,
+               cur_node_sub, cur_edge_sub,
+               list_ins_del, list_node_sub, list_edge_sub,
+               epoch):
+    '''
+    Save current cost to given lists of costs along epochs
+    '''
+    list_ins_del[epoch][0] = cur_node_ins_del.item()
+    list_ins_del[epoch][1] = cur_edge_ins_del.item()
+
+    # Sauvegarde des couts
+    k = 0
+    for p in range(cur_node_sub.shape[0]):
+        for q in range(p + 1, cur_node_sub.shape[0]):
+            list_node_sub[epoch][k] = cur_node_sub[p][q]
+            k = k + 1
+    k = 0
+    for p in range(cur_edge_sub.shape[0]):
+        for q in range(p + 1, cur_edge_sub.shape[0]):
+            list_edge_sub[epoch][k] = list_edge_sub[p][q]
+            k = k + 1
+    # pas besoin de retourner un rtuc, modifier par effet de bord!
+
+
 def normalize(ged):
     '''
     Normalise la GED entre 0 et 1 pour la hinge Loss
@@ -96,11 +120,14 @@ def learn_costs_for_classification(model, Gs, nb_epochs, device, y, rings_andor_
     now = datetime.now()
     # writer = SummaryWriter("runs/data_" + now.strftime("%d-%m_%H-%M-%S"))
 
-    ins_del = np.empty((nb_epochs, 2))
+    ins_del = np.empty((nb_epochs+1, 2))
     node_sub = np.empty(
-        (nb_epochs, int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
+        (nb_epochs+1, int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
     edge_sub = np.empty(
-        (nb_epochs, int(edge_costs.shape[0] * (edge_costs.shape[0] - 1) / 2)))
+        (nb_epochs+1, int(edge_costs.shape[0] * (edge_costs.shape[0] - 1) / 2)))
+    save_costs(node_ins_del, edge_ins_del,
+               node_costs, edge_costs,
+               ins_del, node_sub, edge_sub, 0)
 
     loss_train = np.empty(nb_epochs)
     loss_valid = np.empty(nb_epochs)
@@ -132,20 +159,9 @@ def learn_costs_for_classification(model, Gs, nb_epochs, device, y, rings_andor_
             # Fin for Batch
 
         # Mise à jour des couts
-        ins_del[epoch][0] = node_ins_del.item()
-        ins_del[epoch][1] = edge_ins_del.item()
-
-        # Sauvegarde des couts
-        k = 0
-        for p in range(node_costs.shape[0]):
-            for q in range(p + 1, node_costs.shape[0]):
-                node_sub[epoch][k] = node_costs[p][q]
-                k = k + 1
-        k = 0
-        for p in range(edge_costs.shape[0]):
-            for q in range(p + 1, edge_costs.shape[0]):
-                edge_sub[epoch][k] = edge_costs[p][q]
-                k = k + 1
+        save_costs(node_ins_del, edge_ins_del,
+                   node_costs, edge_costs,
+                   ins_del, node_sub, edge_sub, epoch+1)
 
         #current_train_loss = current_train_loss.item()
         loss_train[epoch] = current_train_loss
@@ -172,15 +188,6 @@ def learn_costs_for_classification(model, Gs, nb_epochs, device, y, rings_andor_
                 f"Iteration {epoch + 1} \t\t Training Loss: {current_train_loss} - {current_train_loss/nb_train}")
             print(
                 f"loss.item of the valid={current_valid_loss} - {current_valid_loss/nb_valid}")
-
-            # Sauvegarde
-        # tensorboardExport(writer, epoch, current_train_loss, current_valid_loss,
-        #                   node_ins_del.item(), edge_ins_del.item(), node_costs, edge_costs)
-        #
-        # tensorboardExport(writer, epoch, current_train_loss, current_valid_loss,
-        #                   node_ins_del.item(), edge_ins_del.item(), node_costs, edge_costs)
-        # # Fermeture du tensorboard
-        # writer.close()
 
         if constraint == 'projection' and (torch.any(model.params['edge_weights'] < 0) or torch.any(model.params['node_weights'] < 0) or torch.any(model.params['edge_weights'][:-1] > 2.0*model.params['edge_weights'][-1]) or torch.any(model.params['node_weights'] > 2.0*node_ins_del)):
             with torch.no_grad():
