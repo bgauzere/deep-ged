@@ -1,3 +1,4 @@
+from deepged.ged import Ged
 from deepged.inference import evaluate_D
 import matplotlib.gridspec as gridspec
 import os
@@ -20,7 +21,6 @@ from deepged.model import GedLayer
 from deepged.dataset import dataset_split
 import numpy as np
 matplotlib.use('TkAgg')
-from deepged.ged import Ged
 
 
 def plot_labels(Gs, node_label, edge_label, dict_nodes, set_edge_label):
@@ -29,21 +29,24 @@ def plot_labels(Gs, node_label, edge_label, dict_nodes, set_edge_label):
     nb_node = np.zeros(len(dict_nodes))
     nb_edge = np.zeros(len(set_edge_label))
     for G in Gs:
-        A = nx.to_scipy_sparse_matrix(G, dtype=int, weight=edge_label).todense()
+        A = nx.to_scipy_sparse_matrix(
+            G, dtype=int, weight=edge_label).todense()
         lab = [dict_nodes[G.nodes[v][node_label]] for v in nx.nodes(G)]
         for i in lab:
-            nb_node[i] +=1
+            nb_node[i] += 1
         for i in range(A.shape[0]):
             for j in range(A.shape[1]):
-                if A[i,j] != 0:
-                    nb_edge[A[i,j]-1] += 1
+                if A[i, j] != 0:
+                    nb_edge[A[i, j]-1] += 1
     print(nb_node)
     print(nb_edge)
     plt.subplot(211)
-    plt.bar( [i for i in range(len(nb_node))], nb_node)#, [i for i in range(len(nb_node))])
+    # , [i for i in range(len(nb_node))])
+    plt.bar([i for i in range(len(nb_node))], nb_node)
     plt.title("node_labels")
     plt.subplot(212)
-    plt.bar( [i for i in range(len(nb_edge))], nb_edge)#, [i for i in range(len(nb_node))])
+    # , [i for i in range(len(nb_node))])
+    plt.bar([i for i in range(len(nb_edge))], nb_edge)
     plt.title("edge labels")
     plt.show()
 
@@ -147,11 +150,10 @@ def load_dataset(dataset_path):
         return loadDataset(dataset_path)
 
 
-def main():
-
-    dico_device = {"cpu": 'cpu', 'gpu': 'cuda:0'}
-    dico_calc = {0: 'rings_sans_fw', 1: 'sans_rings_avec_fw',
-                 2: 'rings_avec_fw', 3: 'sans_rings_sans_fw'}
+def parse_arguments_main():
+    '''
+    Check all arguments given to the executable file to configure learning
+    '''
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -177,22 +179,33 @@ def main():
                         action='store_true', default=False)
     parser.add_argument(
         "--size_batch", help="Number of pairs of Graphs, for each batch. Default : 1 batch per epoch", type=int, default=None)
+    parser.add_argument(
+        "--size_train", help="Proportion of dataset used for training. Remaining data is used for testset. Default : 0.7", type=float, default=0.7)
     args = parser.parse_args()
+    return args
 
+
+def main():
+
+    args = parse_arguments_main()
     # Configuraiton du modele
+    dico_device = {"cpu": 'cpu', 'gpu': 'cuda:0'}
+    dico_calc = {0: 'rings_sans_fw', 1: 'sans_rings_avec_fw',
+                 2: 'rings_avec_fw', 3: 'sans_rings_sans_fw'}
     rings_andor_fw = dico_calc[args.calculation]
     device = dico_device[args.device]
     nb_epochs = args.nb_epochs
     path_dataset = args.path
     size_batch = args.size_batch
+    train_size = args.size_train
     constraint = args.constraint
+
     # Init dataset
     if (args.verbosity):
         print(f"Paramètres: {args}")
 
     Gs, y = load_dataset(path_dataset)
 
-    print("Taille du dataset : ", len(Gs))
     if "MUTAG" in path_dataset:
         y_1 = [idx for idx in range(len(y)) if y[idx] == 1]
         y_m1 = [idx for idx in range(len(y)) if y[idx] == -1]
@@ -212,15 +225,13 @@ def main():
         Gs, node_label, edge_label)
     nb_labels = len(node_labels)
 
-    plot_labels(Gs, node_label, edge_label, node_labels, [i for i in range(nb_edge_labels)])
-
+    plot_labels(Gs, node_label, edge_label, node_labels,
+                [i for i in range(nb_edge_labels)])
 
     model = GedLayer(nb_labels, nb_edge_labels, node_labels, rings_andor_fw,
                      normalize=args.normalize,
                      node_label=node_label,
                      device=dico_device[args.device])
-
-
 
     # Getting the GPU status :
     if(args.verbosity and args.device == 'gpu'):
@@ -229,7 +240,7 @@ def main():
     # Preparation of dataset
     # TODO -> mettre dans une fonction + dataclasses
     train_set, test_set = dataset_split(
-        Gs, y, train_size=.7, test_size=.3, shuffle=True)
+        Gs, y, train_size=train_size, test_size=1-train_size, shuffle=True)
     indices_train, labels_train = train_set
     indices_test, labels_test = test_set
     graphs_train = [Gs[i] for i in indices_train]
@@ -254,8 +265,10 @@ def main():
 
         node_costs, node_ins_del, edge_costs, edge_ins_del = model.from_weights_to_costs()
         k = 0
-        node_sub = np.empty((1,int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
-        edge_sub = np.empty((1,int(edge_costs.shape[0] * (edge_costs.shape[0] - 1) / 2)))
+        node_sub = np.empty(
+            (1, int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
+        edge_sub = np.empty(
+            (1, int(edge_costs.shape[0] * (edge_costs.shape[0] - 1) / 2)))
         for p in range(node_costs.shape[0]):
             for q in range(p + 1, node_costs.shape[0]):
                 node_sub[0][k] = node_costs[p][q]
@@ -265,9 +278,9 @@ def main():
             for q in range(p + 1, edge_costs.shape[0]):
                 edge_sub[0][k] = edge_costs[p][q]
                 k = k + 1
-        cost_ins_del = np.empty((1,2))
-        cost_ins_del[0,0] = node_ins_del
-        cost_ins_del[0,1] = edge_ins_del
+        cost_ins_del = np.empty((1, 2))
+        cost_ins_del[0, 0] = node_ins_del
+        cost_ins_del[0, 1] = edge_ins_del
 
         if(rings_andor_fw == 4):
             costs = [node_sub[0,:], cost_ins_del[0,0].reshape(-1, 1),
