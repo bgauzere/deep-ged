@@ -1,5 +1,7 @@
 import torch
+import numpy as np
 from torch.utils.data import DataLoader, TensorDataset
+#import torch.utils.data.sampler.WeightedRandomSampler
 from sklearn.model_selection import train_test_split
 
 
@@ -7,7 +9,7 @@ def dataset_split(graphs, y,
                   train_size=0.7, test_size=0.3,
                   shuffle=True):
     '''
-    Split dataset indices into train, valid, test. Returns the
+    Split dataset indices into train and test. Returns the
     three datasets with indices of graphs in Gs
     '''
     graph_idx = torch.arange(0, len(graphs), dtype=torch.int64)
@@ -43,7 +45,7 @@ def build_pairs_of_graphs_for_classification(graph_indices, y, avoid_pair_of_neg
         paired_y.append(1)  # forcément meme classe
         for idx_j, y_j in zip(graph_indices, y):
             if (idx_i < idx_j):  # on rajoute qu'une fois un couple
-                if not (avoid_pair_of_negative and y_i != 1 and y_j !=1):
+                if not (avoid_pair_of_negative and y_i != 1 and y_j != 1):
                     couples_train.append([idx_i, idx_j])
                     paired_y.append(1 if (y_i == y_j) else -1)
     return torch.tensor(couples_train), torch.tensor(paired_y)
@@ -55,9 +57,21 @@ def generate_dataloader(graph_indices, graph_label, size_batch=None):
     '''
 
     dataset = TensorDataset(graph_indices, graph_label)
-    if(size_batch == None):
+    if(size_batch is None):
         size_batch = len(dataset)
+    labels, counts = np.unique(graph_label, return_counts=True)
+    # proba d'être tirée = 1-proba d'apparaitre
+    proba = 1-(counts/np.sum(counts))
+    dict_proba = {l: p for l, p in zip(labels, proba)}
+    weights = np.array([dict_proba[l.item()] for l in graph_label])
+    sampler = torch.utils.data.sampler.WeightedRandomSampler(
+        weights=weights, num_samples=len(weights)*5, replacement=True)
+
     loader = DataLoader(dataset, batch_size=size_batch, drop_last=True)
+    # loader = DataLoader(dataset=dataset,
+    #                     batch_size=size_batch,
+    #                     sampler=sampler)
+    #
     return loader
 
 
@@ -77,7 +91,8 @@ def initialize_dataset(graphs, y, avoid_pair_of_negative=True,
     Returns three torch dataLoader for train, valid and test according to ratios
     '''
     dataset_train, dataset_test = dataset_split(graphs, y,
-                                                train_size=train_size, test_size=test_size,
+                                                train_size=train_size,
+                                                test_size=test_size,
                                                 shuffle=shuffle)
     loader_train = from_indices_to_dataloader(
         *dataset_train, size_batch=size_batch_train)

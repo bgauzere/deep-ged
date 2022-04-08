@@ -23,6 +23,19 @@ import numpy as np
 matplotlib.use('TkAgg')
 
 
+def create_save_directory():
+    '''
+    Create a new directory to save data about current run
+    '''
+    default_directory = "save_runs"
+    if(not os.path.isdir(default_directory)):
+        os.mkdir(default_directory)
+    time_stamp = datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
+    path = os.path.join(default_directory, time_stamp)
+    os.mkdir(path)
+    return path
+
+
 def plot_labels(Gs, node_label, edge_label, dict_nodes, set_edge_label):
     print(dict_nodes)
     print(set_edge_label)
@@ -185,9 +198,8 @@ def parse_arguments_main():
     return args
 
 
-def main():
+def run(args):
 
-    args = parse_arguments_main()
     # Configuraiton du modele
     dico_device = {"cpu": 'cpu', 'gpu': 'cuda:0'}
     dico_calc = {0: 'rings_sans_fw', 1: 'sans_rings_avec_fw',
@@ -240,20 +252,24 @@ def main():
     y_test = [y[i] for i in indices_test]
 
     if(args.calculation <= 3):
+        # Learn with rings_andor_fw configuration
         cost_ins_del, cost_node_sub, \
             cost_edge_sub, loss_valid, \
-            loss_train, epoch = learn_costs_for_classification(
+            loss_train = learn_costs_for_classification(
                 model, graphs_train, nb_epochs, device, labels_train, rings_andor_fw,
                 verbosity=args.verbosity,
                 size_batch=size_batch, constraint=constraint)
         # print(cost_ins_del, cost_node_sub, cost_edge_sub)
-        costs = [cost_node_sub[epoch, :], cost_ins_del[epoch, 0].reshape(-1, 1),
-                 cost_edge_sub[epoch, :], cost_ins_del[epoch, 0].reshape(-1, 1)]
+        best_epoch = np.argmin(loss_valid)
+        if(args.verbosity):
+            print(f"best_epoch : {best_epoch}")
+        costs = [cost_node_sub[best_epoch, :], cost_ins_del[best_epoch, 0].reshape(-1, 1),
+                 cost_edge_sub[best_epoch, :], cost_ins_del[best_epoch, 0].reshape(-1, 1)]
         if(args.verbosity):
             print(loss_train, loss_valid)
 
     elif(args.calculation >= 4):
-
+        # Poids random initiaux ou par défaut
         node_costs, node_ins_del, edge_costs, edge_ins_del = model.from_weights_to_costs()
         k = 0
         node_sub = np.empty(
@@ -274,11 +290,12 @@ def main():
         cost_ins_del[0, 1] = edge_ins_del
 
         if(rings_andor_fw == 4):
+            # Poids random initiaux
             costs = [node_sub[0, :], cost_ins_del[0, 0].reshape(-1, 1),
                      edge_sub[0, :], cost_ins_del[0, 0].reshape(-1, 1)]
 
         elif(rings_andor_fw == 5):
-
+            # Poids par défault
             node_sub[-1, :] = 1
             cost_ins_del[-1, 0] = 2
             edge_sub[-1, :] = 1
@@ -295,16 +312,10 @@ def main():
         graphs_test, graphs_train, args.verbosity)
     perf_train, perf_test, clf = evaluate_D(
         D_train, y_train, D_test, y_test, mode='classif')
-    print(perf_train, perf_test)
     # We save everything
     # Sauvegarde du modele
-    default_directory = "save_runs"
-    if(not os.path.isdir(default_directory)):
-        os.mkdir(default_directory)
-    time_stamp = datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
-    path = os.path.join(default_directory, time_stamp)
-    os.mkdir(path)
-    directory = path
+    directory = create_save_directory()
+
     visualize(cost_ins_del, cost_node_sub, cost_edge_sub,
               loss_train, loss_valid,
               directory, args.verbosity)
@@ -313,18 +324,9 @@ def main():
               cost_node_sub, repr(args), D_train, D_test, clf, [perf_train, perf_test])
 
     return perf_train, perf_test
-    # classify test
-    # measure errors
-    # save
 
 
 if __name__ == "__main__":
-
-    lis_train = []
-    lis_test = []
-    for i in range(10):
-        perf_app, perf_test = main()
-        lis_train.append(perf_app)
-        lis_test.append(perf_test)
-    print("Perf in train : ", np.mean(lis_train), "±", np.std(lis_train))
-    print("Perf in test : ", np.mean(lis_test), "±", np.std(lis_test))
+    args = parse_arguments_main()
+    perf_train, perf_test = run(args)
+    print(perf_train, perf_test)

@@ -130,12 +130,31 @@ def learn_costs_for_classification(model, Gs, nb_epochs, device, y, rings_andor_
                ins_del, node_sub, edge_sub, 0)
 
     loss_train = np.empty(nb_epochs)
-    loss_valid = np.empty(nb_epochs)
+    loss_valid = np.empty(nb_epochs+1)
+
+    # First valid (à factoriser avec plus bas)
+    current_valid_loss = 0.0
+    nb_valid = 0
+    for data, labels in valid_loader:
+        nb_valid += len(data)
+        with torch.no_grad():
+            ged_pred = forward_data_model(
+                data, model, Gs, device)
+            loss = criterion(ged_pred, labels).item()
+            if constraint == 'add_to_loss':
+                triangular_inequality = criterion_tri(node_costs, node_ins_del,
+                                                      edge_costs, edge_ins_del)
+                loss = .5*loss * (1.0 + triangular_inequality)
+
+        current_valid_loss += loss
+    loss_valid[0] = current_valid_loss
 
     for epoch in range(nb_epochs):
         current_train_loss = 0.0
         nb_train = 0
         for data, labels in train_loader:
+            print(
+                f"repartition batch : {np.unique(labels, return_counts=True)}")
             # Learning step
             nb_train += len(data)
             # TODO : du coup train_labels devrait être inutile
@@ -181,7 +200,7 @@ def learn_costs_for_classification(model, Gs, nb_epochs, device, y, rings_andor_
                     loss = .5*loss * (1.0 + triangular_inequality)
 
                 current_valid_loss += loss
-        loss_valid[epoch] = current_valid_loss
+        loss_valid[epoch+1] = current_valid_loss
 
         if (verbosity):
             print(
