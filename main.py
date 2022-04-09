@@ -204,7 +204,9 @@ def run(args):
     dico_device = {"cpu": 'cpu', 'gpu': 'cuda:0'}
     dico_calc = {0: 'rings_sans_fw', 1: 'sans_rings_avec_fw',
                  2: 'rings_avec_fw', 3: 'sans_rings_sans_fw'}
-    rings_andor_fw = dico_calc[args.calculation]
+
+    rings_andor_fw = dico_calc.get(args.calculation, 3)
+
     device = dico_device[args.device]
     nb_epochs = args.nb_epochs
     path_dataset = args.path
@@ -289,15 +291,15 @@ def run(args):
         cost_ins_del[0, 0] = node_ins_del
         cost_ins_del[0, 1] = edge_ins_del
 
-        if(rings_andor_fw == 4):
+        if(args.calculation == 4):
             # Poids random initiaux
             costs = [node_sub[0, :], cost_ins_del[0, 0].reshape(-1, 1),
                      edge_sub[0, :], cost_ins_del[0, 0].reshape(-1, 1)]
 
-        elif(rings_andor_fw == 5):
+        elif(args.calculation == 5):
             # Poids par défault
             node_sub[-1, :] = 1
-            cost_ins_del[-1, 0] = 2
+            cost_ins_del[-1, 0] = 3
             edge_sub[-1, :] = 1
             cost_ins_del[-1, 1] = 3
 
@@ -314,14 +316,15 @@ def run(args):
         D_train, y_train, D_test, y_test, mode='classif')
     # We save everything
     # Sauvegarde du modele
-    directory = create_save_directory()
+    if (args.calculation <= 3):
+        directory = create_save_directory()
 
-    visualize(cost_ins_del, cost_node_sub, cost_edge_sub,
-              loss_train, loss_valid,
-              directory, args.verbosity)
+        visualize(cost_ins_del, cost_node_sub, cost_edge_sub,
+                  loss_train, loss_valid,
+                  directory, args.verbosity)
 
-    save_data(directory, loss_valid, loss_train, cost_ins_del, cost_edge_sub,
-              cost_node_sub, repr(args), D_train, D_test, clf, [perf_train, perf_test])
+        save_data(directory, loss_valid, loss_train, cost_ins_del, cost_edge_sub,
+                  cost_node_sub, repr(args), D_train, D_test, clf, [perf_train, perf_test])
 
     return perf_train, perf_test
 

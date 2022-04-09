@@ -9,5 +9,6 @@ if __name__ == "__main__":
         perf_app, perf_test = run(args)
         lis_train.append(perf_app)
         lis_test.append(perf_test)
+        print(f"xp {i} : {perf_app},{perf_test}")
     print("Perf in train : ", np.mean(lis_train), "±", np.std(lis_train))
     print("Perf in test : ", np.mean(lis_test), "±", np.std(lis_test))

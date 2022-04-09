@@ -153,8 +153,9 @@ def learn_costs_for_classification(model, Gs, nb_epochs, device, y, rings_andor_
         current_train_loss = 0.0
         nb_train = 0
         for data, labels in train_loader:
-            print(
-                f"repartition batch : {np.unique(labels, return_counts=True)}")
+            if(verbosity):
+                print(
+                    f"repartition batch : {np.unique(labels, return_counts=True)}")
             # Learning step
             nb_train += len(data)
             # TODO : du coup train_labels devrait être inutile

@@ -66,8 +66,8 @@ def generate_dataloader(graph_indices, graph_label, size_batch=None):
     weights = np.array([dict_proba[l.item()] for l in graph_label])
     sampler = torch.utils.data.sampler.WeightedRandomSampler(
         weights=weights, num_samples=len(weights)*5, replacement=True)
-
     loader = DataLoader(dataset, batch_size=size_batch, drop_last=True)
+    # Version avec sampler
     # loader = DataLoader(dataset=dataset,
     #                     batch_size=size_batch,
     #                     sampler=sampler)
