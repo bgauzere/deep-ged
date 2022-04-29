@@ -11,6 +11,7 @@ import torch
 from deepged.utils import from_networkx_to_tensor
 import deepged.rings as rings
 import deepged.optim as optim
+from deepged.layers import GedCompLayer
 
 
 class GedLayer(nn.Module):
@@ -35,13 +36,16 @@ class GedLayer(nn.Module):
         self.device = torch.device(device)
         self._init_weights()
 
+        self.ged_comp = GedCompLayer()
+
     def _init_weights(self):
         """
         Initialise les poids pour les paires de labels de noeuds et d'edges
         """
         # Partie tri sup d'une matrice de nb_labels par nb_labels
         nb_node_pair_label = int(self.nb_labels * (self.nb_labels - 1) / 2.0)
-        nb_edge_pair_label = int(self.nb_edge_labels * (self.nb_edge_labels - 1) / 2)
+        nb_edge_pair_label = int(
+            self.nb_edge_labels * (self.nb_edge_labels - 1) / 2)
         # Les weights sont les params de notre réseau
         # +1 pour le cout d'insertion/suppression
         node_weights = (1e-2)*(1.0+.1 *
@@ -66,7 +70,7 @@ class GedLayer(nn.Module):
         g2 = graphs[1]
 
         cns, cndl, ces, cedl = self.from_weights_to_costs()
-
+        # iniitalisation matrices
         A_g1, labels_1 = from_networkx_to_tensor(
             g1, self.dict_nodes, self.node_label)
         A_g2, labels_2 = from_networkx_to_tensor(
@@ -75,12 +79,15 @@ class GedLayer(nn.Module):
         n = g1.order()
         m = g2.order()
 
+        # couche calcul de S
         C = self.construct_cost_matrix(
             A_g1, A_g2, [n, m], [labels_1, labels_2], cns, ces, cndl, cedl)
         c = torch.diag(C)
         D = C - torch.eye(C.shape[0]) * c
         S = torch.exp(-.5*c.view(n+1, m+1))
         #S = optim.from_cost_to_similarity_exp(c.view(n+1, m+1))
+
+        # couche appariemment
         X = optim.sinkhorn_diff(S, 10).view((n+1)*(m+1), 1)
         if self.rings_andor_fw == 'sans_rings_avec_fw':
             X = optim.franck_wolfe(X, D, c, 5, 10, n, m)
@@ -92,7 +99,10 @@ class GedLayer(nn.Module):
             normalize_factor = cndl * (n + m) + cedl * (nb_edge1 + nb_edge2)
 
         v = torch.flatten(X)
-        ged = (.5 * v.T @ D @ v + c.T @ v)/normalize_factor
+        # Couche ged
+        ged = self.ged_comp(v, D, c, normalize_factor)
+        #(.5 * v.T @ D @ v + c.T @ v)/normalize_factor
+
         return ged
 
     def project_weights(self):

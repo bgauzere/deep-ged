@@ -21,6 +21,7 @@ def dataset_split(graphs, y,
                                                      shuffle=shuffle,
                                                      stratify=y)
     except ValueError:
+        # Pourquoi faire ??
         [train_graph, test_graph,
          train_label, test_label] = train_test_split(graph_idx, y,
                                                      train_size=train_size,

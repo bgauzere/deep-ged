@@ -1,26 +1,36 @@
-from deepged.ged import Ged
-from deepged.inference import evaluate_D
-import matplotlib.gridspec as gridspec
+from enum import Enum, auto
 import os
 import sys
 import pickle as pkl
-import torch
-import GPUtil
-import matplotlib.pyplot as plt
-import matplotlib
-import networkx as nx
 import argparse
 from datetime import datetime
+
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import networkx as nx
+
+import torch
+import GPUtil
 from gklearn.utils.graphfiles import loadDataset
 from gklearn.dataset import TUDataset_META
 from gklearn.dataset import Dataset
 
+from deepged.ged import Ged
+from deepged.inference import evaluate_D
 from deepged.learning import learn_costs_for_classification
 from deepged.label_manager import compute_extended_labels, build_node_dictionnary
 from deepged.model import GedLayer
 from deepged.dataset import dataset_split
-import numpy as np
-matplotlib.use('TkAgg')
+
+
+class Task(Enum):
+    CLASSIF = auto()
+    REG = auto()
+
+    def __str__(self):
+        return self.name
 
 
 def create_save_directory():
@@ -118,6 +128,7 @@ def visualize(cost_ins_del, cost_node_sub, cost_edge_sub,
     ax.set_title("Node sub costs", family="Roboto", weight=500)
 
     if (verbosity):
+        matplotlib.use('TkAgg')
         plt.show()
     if directory is not None:
         fig.savefig(os.path.join(directory, "plot.pdf"))
@@ -194,6 +205,9 @@ def parse_arguments_main():
         "--size_batch", help="Number of pairs of Graphs, for each batch. Default : 1 batch per epoch", type=int, default=None)
     parser.add_argument(
         "--size_train", help="Proportion of dataset used for training. Remaining data is used for testset. Default : 0.7", type=float, default=0.7)
+    parser.add_argument(
+        "--mode", help="perform a regresssion or classification task. Default : classification", type=lambda task: Task[task], choices=list(Task), default=Task.CLASSIF)
+
     args = parser.parse_args()
     return args
 
@@ -242,8 +256,9 @@ def run(args):
     if(args.verbosity and args.device == 'gpu'):
         GPUtil.showUtilization()
 
-    # Preparation of dataset
+    # Preparation du dataset
     # TODO -> mettre dans une fonction + dataclasses
+    # Pourquoi tant de lignes ?
     train_set, test_set = dataset_split(
         Gs, y, train_size=train_size, test_size=1-train_size, shuffle=True)
     indices_train, labels_train = train_set
@@ -255,6 +270,7 @@ def run(args):
 
     if(args.calculation <= 3):
         # Learn with rings_andor_fw configuration
+        # TODO : REG : à gerer
         cost_ins_del, cost_node_sub, \
             cost_edge_sub, loss_valid, \
             loss_train = learn_costs_for_classification(
@@ -273,51 +289,56 @@ def run(args):
     elif(args.calculation >= 4):
         # Poids random initiaux ou par défaut
         node_costs, node_ins_del, edge_costs, edge_ins_del = model.from_weights_to_costs()
+        # à mettre dans une fonctions
         k = 0
         node_sub = np.empty(
             (1, int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
-        edge_sub = np.empty(
+        edge_sub=np.empty(
             (1, int(edge_costs.shape[0] * (edge_costs.shape[0] - 1) / 2)))
         for p in range(node_costs.shape[0]):
             for q in range(p + 1, node_costs.shape[0]):
-                node_sub[0][k] = node_costs[p][q]
-                k = k + 1
-        k = 0
+                node_sub[0][k]=node_costs[p][q]
+                k=k + 1
+        k=0
         for p in range(edge_costs.shape[0]):
             for q in range(p + 1, edge_costs.shape[0]):
-                edge_sub[0][k] = edge_costs[p][q]
-                k = k + 1
-        cost_ins_del = np.empty((1, 2))
-        cost_ins_del[0, 0] = node_ins_del
-        cost_ins_del[0, 1] = edge_ins_del
+                edge_sub[0][k]=edge_costs[p][q]
+                k=k + 1
+        cost_ins_del=np.empty((1, 2))
+        cost_ins_del[0, 0]=node_ins_del
+        cost_ins_del[0, 1]=edge_ins_del
 
         if(args.calculation == 4):
             # Poids random initiaux
-            costs = [node_sub[0, :], cost_ins_del[0, 0].reshape(-1, 1),
+            costs=[node_sub[0, :], cost_ins_del[0, 0].reshape(-1, 1),
                      edge_sub[0, :], cost_ins_del[0, 0].reshape(-1, 1)]
 
         elif(args.calculation == 5):
             # Poids par défault
-            node_sub[-1, :] = 1
-            cost_ins_del[-1, 0] = 3
-            edge_sub[-1, :] = 1
-            cost_ins_del[-1, 1] = 3
+            node_sub[-1, :]=1
+            cost_ins_del[-1, 0]=3
+            edge_sub[-1, :]=1
+            cost_ins_del[-1, 1]=3
 
-            costs = [node_sub[-1, :], cost_ins_del[-1, 0].reshape(-1, 1),
+            costs=[node_sub[-1, :], cost_ins_del[-1, 0].reshape(-1, 1),
                      edge_sub[-1, :], cost_ins_del[-1, 1].reshape(-1, 1)]
 
-    ged = Ged(costs, node_labels, nb_edge_labels, node_label)
+    ###################################
+    # Les couts de la ged sont connus, on évalue
+    ##################################
+    ged=Ged(costs, node_labels, nb_edge_labels, node_label)
     # compute ged between train and test
-    D_train = ged.compute_distance_between_sets(
+    D_train=ged.compute_distance_between_sets(
         graphs_train, graphs_train, args.verbosity)
-    D_test = ged.compute_distance_between_sets(
+    D_test=ged.compute_distance_between_sets(
         graphs_test, graphs_train, args.verbosity)
-    perf_train, perf_test, clf = evaluate_D(
+    perf_train, perf_test, clf=evaluate_D(
         D_train, y_train, D_test, y_test, mode='classif')
     # We save everything
     # Sauvegarde du modele
     if (args.calculation <= 3):
-        directory = create_save_directory()
+        # On est dans un cas d'apprentissage, on sauvegarde les données
+        directory=create_save_directory()
 
         visualize(cost_ins_del, cost_node_sub, cost_edge_sub,
                   loss_train, loss_valid,
@@ -330,6 +351,7 @@ def run(args):
 
 
 if __name__ == "__main__":
-    args = parse_arguments_main()
-    perf_train, perf_test = run(args)
+    args=parse_arguments_main()
+    print(args)
+    perf_train, perf_test=run(args)
     print(perf_train, perf_test)
