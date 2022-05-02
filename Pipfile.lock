@@ -399,7 +399,7 @@
                 "sha256:7bcdf79bd1cda534735bd9830d2cbedab4ee34d8fe1df6e7b946b3aab0902ba3"
             ],
             "markers": "python_version >= '3.6'",
-            "version": "==6.4.6"
+            "version": ">=6.4.10"
         },
         "packaging": {
             "hashes": [

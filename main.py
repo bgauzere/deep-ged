@@ -1,4 +1,3 @@
-from enum import Enum, auto
 import os
 import sys
 import pickle as pkl
@@ -19,18 +18,10 @@ from gklearn.dataset import Dataset
 
 from deepged.ged import Ged
 from deepged.inference import evaluate_D
-from deepged.learning import learn_costs_for_classification
+from deepged.learning import learn_costs
 from deepged.label_manager import compute_extended_labels, build_node_dictionnary
 from deepged.model import GedLayer
-from deepged.dataset import dataset_split
-
-
-class Task(Enum):
-    CLASSIF = auto()
-    REG = auto()
-
-    def __str__(self):
-        return self.name
+from deepged.dataset import dataset_split, Task
 
 
 def create_save_directory():
@@ -273,10 +264,11 @@ def run(args):
         # TODO : REG : à gerer
         cost_ins_del, cost_node_sub, \
             cost_edge_sub, loss_valid, \
-            loss_train = learn_costs_for_classification(
-                model, graphs_train, nb_epochs, device, labels_train, rings_andor_fw,
+            loss_train = learn_costs(
+                model, graphs_train, nb_epochs, labels_train, rings_andor_fw,
                 verbosity=args.verbosity,
-                size_batch=size_batch, constraint=constraint)
+                size_batch=size_batch, constraint=constraint,
+                mode=args.mode)
         # print(cost_ins_del, cost_node_sub, cost_edge_sub)
         best_epoch = np.argmin(loss_valid)
         if(args.verbosity):
@@ -293,52 +285,56 @@ def run(args):
         k = 0
         node_sub = np.empty(
             (1, int(node_costs.shape[0] * (node_costs.shape[0] - 1) / 2)))
-        edge_sub=np.empty(
+        edge_sub = np.empty(
             (1, int(edge_costs.shape[0] * (edge_costs.shape[0] - 1) / 2)))
         for p in range(node_costs.shape[0]):
             for q in range(p + 1, node_costs.shape[0]):
-                node_sub[0][k]=node_costs[p][q]
-                k=k + 1
-        k=0
+                node_sub[0][k] = node_costs[p][q]
+                k = k + 1
+        k = 0
         for p in range(edge_costs.shape[0]):
             for q in range(p + 1, edge_costs.shape[0]):
-                edge_sub[0][k]=edge_costs[p][q]
-                k=k + 1
-        cost_ins_del=np.empty((1, 2))
-        cost_ins_del[0, 0]=node_ins_del
-        cost_ins_del[0, 1]=edge_ins_del
+                edge_sub[0][k] = edge_costs[p][q]
+                k = k + 1
+        cost_ins_del = np.empty((1, 2))
+        cost_ins_del[0, 0] = node_ins_del
+        cost_ins_del[0, 1] = edge_ins_del
 
         if(args.calculation == 4):
             # Poids random initiaux
-            costs=[node_sub[0, :], cost_ins_del[0, 0].reshape(-1, 1),
+            costs = [node_sub[0, :], cost_ins_del[0, 0].reshape(-1, 1),
                      edge_sub[0, :], cost_ins_del[0, 0].reshape(-1, 1)]
 
         elif(args.calculation == 5):
             # Poids par défault
-            node_sub[-1, :]=1
-            cost_ins_del[-1, 0]=3
-            edge_sub[-1, :]=1
-            cost_ins_del[-1, 1]=3
+            node_sub[-1, :] = 1
+            cost_ins_del[-1, 0] = 3
+            edge_sub[-1, :] = 1
+            cost_ins_del[-1, 1] = 3
 
-            costs=[node_sub[-1, :], cost_ins_del[-1, 0].reshape(-1, 1),
+            costs = [node_sub[-1, :], cost_ins_del[-1, 0].reshape(-1, 1),
                      edge_sub[-1, :], cost_ins_del[-1, 1].reshape(-1, 1)]
 
     ###################################
     # Les couts de la ged sont connus, on évalue
     ##################################
-    ged=Ged(costs, node_labels, nb_edge_labels, node_label)
+    ged = Ged(costs, node_labels, nb_edge_labels, node_label)
     # compute ged between train and test
-    D_train=ged.compute_distance_between_sets(
+    D_train = ged.compute_distance_between_sets(
         graphs_train, graphs_train, args.verbosity)
-    D_test=ged.compute_distance_between_sets(
+    D_test = ged.compute_distance_between_sets(
         graphs_test, graphs_train, args.verbosity)
-    perf_train, perf_test, clf=evaluate_D(
-        D_train, y_train, D_test, y_test, mode='classif')
+    mode = 'classif'
+    if args.mode == Task.REG:
+        mode = 'reg'
+
+    perf_train, perf_test, clf = evaluate_D(
+        D_train, y_train, D_test, y_test, mode=mode)
     # We save everything
     # Sauvegarde du modele
     if (args.calculation <= 3):
         # On est dans un cas d'apprentissage, on sauvegarde les données
-        directory=create_save_directory()
+        directory = create_save_directory()
 
         visualize(cost_ins_del, cost_node_sub, cost_edge_sub,
                   loss_train, loss_valid,
@@ -351,7 +347,7 @@ def run(args):
 
 
 if __name__ == "__main__":
-    args=parse_arguments_main()
+    args = parse_arguments_main()
     print(args)
-    perf_train, perf_test=run(args)
+    perf_train, perf_test = run(args)
     print(perf_train, perf_test)

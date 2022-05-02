@@ -7,7 +7,7 @@ from datetime import datetime
 
 from deepged.triangular_losses import TriangularConstraint
 # from deepged.data_manager.data_split import splitting
-from deepged.dataset import initialize_dataset
+from deepged.dataset import initialize_dataset, Task
 
 
 def save_costs(cur_node_ins_del, cur_edge_ins_del,
@@ -44,7 +44,7 @@ def normalize(ged):
     return ged
 
 
-def forward_data_model(data, model, Gs, device, verbosity=False):
+def forward_data_model(data, model, Gs, verbosity=False):
     '''Effectue une passe forward d'un loader (train, valid ou test)
     et renvoie l'ensemble des ged et des labels si meme classe ou
     non
@@ -53,7 +53,6 @@ def forward_data_model(data, model, Gs, device, verbosity=False):
     :param model: le modèle utilisé
     :param Gs: l'ensemble des graphes sous forme de
     liste
-    :param device:device utilisé (cpu ou gpu)
     :return: l'ensemble des prédictions, ainsi
     que les true_labels
     '''
@@ -98,15 +97,26 @@ def tensorboardExport(writer, epoch, train_loss, valid_loss, node_ins_del, edge_
     writer.flush()
 
 
-def learn_costs_for_classification(model, Gs, nb_epochs, device, y, rings_andor_fw,
-                                   verbosity=True, learning_rate=0.01,
-                                   size_batch=None,
-                                   constraint='no_constraint'):
-    """ Run nb_epochs epochs pour fiter les couts de la ged
+def learn_costs(model, Gs, nb_epochs, y, rings_andor_fw,
+                verbosity=True, learning_rate=0.01,
+                size_batch=None,
+                constraint='no_constraint',
+                mode=Task.CLASSIF):
+    """
+    Run nb_epochs epochs pour fiter les couts de la ged
     TODO : function trop longue, à factoriser
+
+    :param model : GedLayer initialisé
+
+    :param Gs : liste de graphes networkx
+
+    :param nb_epochs : nb d'epochs pour apprendre les couts (=100 bonne idée)
+
+    : y : list of properties associated to graphs
+
     """
     train_loader, valid_loader = initialize_dataset(
-        Gs, y, size_batch_train=size_batch)
+        Gs, y, size_batch_train=size_batch, mode=mode)
 
     criterion = torch.nn.HingeEmbeddingLoss(reduction='sum')
     criterion_tri = TriangularConstraint()
@@ -139,7 +149,7 @@ def learn_costs_for_classification(model, Gs, nb_epochs, device, y, rings_andor_
         nb_valid += len(data)
         with torch.no_grad():
             ged_pred = forward_data_model(
-                data, model, Gs, device)
+                data, model, Gs)
             loss = criterion(ged_pred, labels).item()
             if constraint == 'add_to_loss':
                 triangular_inequality = criterion_tri(node_costs, node_ins_del,
@@ -160,7 +170,7 @@ def learn_costs_for_classification(model, Gs, nb_epochs, device, y, rings_andor_
             nb_train += len(data)
             # TODO : du coup train_labels devrait être inutile
             ged_pred = forward_data_model(
-                data, model, Gs, device, verbosity)
+                data, model, Gs, verbosity)
             loss = criterion(ged_pred, labels)
             if constraint == 'add_to_loss':
                 triangular_inequality = criterion_tri(
@@ -193,7 +203,7 @@ def learn_costs_for_classification(model, Gs, nb_epochs, device, y, rings_andor_
             nb_valid += len(data)
             with torch.no_grad():
                 ged_pred = forward_data_model(
-                    data, model, Gs, device)
+                    data, model, Gs)
                 loss = criterion(ged_pred, labels).item()
                 if constraint == 'add_to_loss':
                     triangular_inequality = criterion_tri(node_costs, node_ins_del,
