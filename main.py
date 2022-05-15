@@ -127,7 +127,7 @@ def visualize(cost_ins_del, cost_node_sub, cost_edge_sub,
 
 def save_data(directory, loss_valid, loss_train,
               cost_ins_del, cost_edge_sub, cost_node_sub,
-              args, D_train, D_test, clf, perfs):
+              args, D_train, D_test, clf, perfs, y_app, y_test):
     """
     Sauvegarde l'ensemble du learning aisni que les poids optimisés
     TODO : Code a factoriser !
@@ -150,7 +150,8 @@ def save_data(directory, loss_valid, loss_train,
         f.write(args)
 
     pickle_filename = os.path.join(directory, "data_prediction.pkl")
-    pkl.dump([D_train, D_test, clf, perfs], open(pickle_filename, "wb"))
+    pkl.dump({"d_train": D_train, "d_test_": D_test, "classifier": clf, "perfs": perfs, "y_app": y_app, "y_test":
+              y_test}, open(pickle_filename, "wb"))
 
 
 def load_dataset(dataset_path):
@@ -178,7 +179,7 @@ def parse_arguments_main():
     parser.add_argument("-d",
                         '--device', help="Device to use : CPU/GPU", choices=['cpu', 'gpu'], default='cpu')
     parser.add_argument('-n', '--normalize',
-                        help='Enable normalization', action='store_true', default=True)
+                        help='Enable normalization', action='store_true', default=False)
 
     parser.add_argument("-c",
                         '--calculation', help='Select the calculation method : Rings only (0) / Frank Wolfe only (1) / both (2) / none (3) / random (4) / default (5)', type=int, choices=[0, 1, 2, 3, 4, 5], default=3)
@@ -341,7 +342,7 @@ def run(args):
                   directory, args.verbosity)
 
         save_data(directory, loss_valid, loss_train, cost_ins_del, cost_edge_sub,
-                  cost_node_sub, repr(args), D_train, D_test, clf, [perf_train, perf_test])
+                  cost_node_sub, repr(args), D_train, D_test, clf, [perf_train, perf_test], y_train, y_test)
 
     return perf_train, perf_test
 

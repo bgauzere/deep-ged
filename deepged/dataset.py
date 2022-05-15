@@ -57,8 +57,8 @@ def build_pairs_of_graphs_for_regression(graph_indices, y, nb_pairs=1000):
                 couples_train.append([idx_i, idx_j])
                 paired_y.append(np.abs(y_i - y_j))
     couples_train = torch.tensor(couples_train)
-    paired_y = torch.tensor(paired_y)
-    idx = torch.argsort(couples_train)
+    paired_y = torch.tensor(paired_y, dtype=torch.float)
+    idx = torch.argsort(paired_y)
     return couples_train[idx[:nb_pairs]], paired_y[idx[:nb_pairs]]
 
 
@@ -137,6 +137,6 @@ def initialize_dataset(graphs, y, mode=Task.CLASSIF,
                                                 test_size=test_size,
                                                 shuffle=shuffle)
     loader_train = from_indices_to_dataloader(
-        *dataset_train, size_batch=size_batch_train)
+        *dataset_train, size_batch=size_batch_train, mode=mode)
     loader_test = from_indices_to_dataloader(*dataset_test, size_batch=None)
     return loader_train, loader_test

@@ -49,7 +49,7 @@ class GedLayer(nn.Module):
         # Les weights sont les params de notre réseau
         # +1 pour le cout d'insertion/suppression
         node_weights = (1e-2)*(1.0+.1 *
-                               np.random.rand(nb_node_pair_label))
+                               np.random.rand(nb_node_pair_label)+1)
 
         edge_weights = (1e-2)*(1.0+.1 *
                                np.random.rand(nb_edge_pair_label + 1))
@@ -142,7 +142,7 @@ class GedLayer(nn.Module):
         ce = relu(self.params['edge_weights'])
         edge_ins_del = ce[-1]
         # ce cout est fixe pour apporter une normalisation des distances.
-        node_ins_del = torch.tensor(3.0e-2)
+        node_ins_del = cn[-1]  # torch.tensor(3.0e-2)
 
         # Initialization of the node costs
         node_costs = torch.zeros(

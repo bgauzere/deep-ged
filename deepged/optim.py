@@ -94,15 +94,15 @@ def franck_wolfe(x0, D, c, offset, kmax, n, m):
         alpha = x.T@D@(b-x)+c.T@(b-x)
         # security check if b is not a local minima (does not occur with real hungarian)
         if alpha > 0:
-            if k <= 3 and alpha >= 1e-3:
-                sys.stderr.write(f"alpha positif('{k}') : {alpha.item()}")
-            """
-            if k==0:
-                print('T=',T)
-                print('Sim=',torch.exp(-T*Cp))
-                print('Cp=',Cp)
-                print('Cp original= ',(x.T@D+c).view(n+1,m+1))
-            """
+            # if k <= 3 and alpha >= 1e-3:
+            #     sys.stderr.write(f"alpha positif('{k}') : {alpha.item()}")
+            # """
+            # if k==0:
+            #     print('T=',T)
+            #     print('Sim=',torch.exp(-T*Cp))
+            #     print('Cp=',Cp)
+            #     print('Cp original= ',(x.T@D+c).view(n+1,m+1))
+            # """
             return x
 
         beta = .5*(b-x).T@D@(b-x)

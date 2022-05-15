@@ -118,7 +118,11 @@ def learn_costs(model, Gs, nb_epochs, y, rings_andor_fw,
     train_loader, valid_loader = initialize_dataset(
         Gs, y, size_batch_train=size_batch, mode=mode)
 
-    criterion = torch.nn.HingeEmbeddingLoss(reduction='sum')
+    if mode == Task.CLASSIF:
+        criterion = torch.nn.HingeEmbeddingLoss(reduction='sum')
+    else:
+        criterion = torch.nn.MSELoss()
+
     criterion_tri = TriangularConstraint()
     optimizer = torch.optim.Adam(
         model.parameters(), lr=learning_rate)
@@ -163,9 +167,6 @@ def learn_costs(model, Gs, nb_epochs, y, rings_andor_fw,
         current_train_loss = 0.0
         nb_train = 0
         for data, labels in train_loader:
-            if(verbosity):
-                print(
-                    f"repartition batch : {np.unique(labels, return_counts=True)}")
             # Learning step
             nb_train += len(data)
             # TODO : du coup train_labels devrait être inutile
@@ -181,9 +182,9 @@ def learn_costs(model, Gs, nb_epochs, y, rings_andor_fw,
 #            print(                f"loss attache:{2.0*loss/(1+triangular_inequality)}\t\t triangular loss{triangular_inequality}\t\t total loss:{loss}")
             loss.backward()
             optimizer.step()
-            if(verbosity):
-                print('grad of node weighs', model.params['node_weights'].grad)
-                print('grad of edge weighs', model.params['edge_weights'].grad)
+            # if(verbosity):
+            #     print('grad of node weighs', model.params['node_weights'].grad)
+            #     print('grad of edge weighs', model.params['edge_weights'].grad)
 
             optimizer.zero_grad()
             # Fin for Batch
