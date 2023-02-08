@@ -1,11 +1,12 @@
 # Configuration
 * `pip install -r requirements.txt`
 * `pipenv shell`
-* `git clone https://github.com/jajupmochi/graphkit-learn.git`
-* `cd graphkit-learn`
-* `python setup.py install`
-
-
+* `export PYTHONPATH=$PYTHONPATH:/home/bgauzere/src/gedlibpy`
+#Experiences
+ * xp_ged.py : prediction of molecular property
+ *
+ 
+ 
 # Méthodes d'optimisation
 
 TODO

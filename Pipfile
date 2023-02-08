@@ -7,8 +7,15 @@ name = "pypi"
 pytest = "*"
 ipykernel = "*"
 jupyter = "*"
+numpy = "*"
+torch = "*"
+torchvision = "*"
+torchaudio = "*"
+matplotlib = "*"
+networkx = "*"
+greycdata-bgauzere = {path = "/home/bgauzere/dev/greycdata/dist/greycdata_bgauzere-0.0.8-py3-none-any.whl"}
 
 [dev-packages]
 
 [requires]
-python_version = "3.9"
+python_version = "3.10"

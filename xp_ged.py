@@ -1,3 +1,6 @@
+'''
+Perform an experience on predicting molecule property by learning ged edit costs
+'''
 import numpy as np
 from main import run, parse_arguments_main
 
