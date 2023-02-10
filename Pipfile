@@ -14,6 +14,7 @@ torchaudio = "*"
 matplotlib = "*"
 networkx = "*"
 greycdata-bgauzere = {path = "/home/bgauzere/dev/greycdata/dist/greycdata_bgauzere-0.0.8-py3-none-any.whl"}
+ipdb = "*"
 
 [dev-packages]
 

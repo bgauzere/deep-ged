@@ -1,6 +1,21 @@
 import numpy as np
 
 
+def cost_to_sim(C):
+    """
+    Transforms a cost matrix to a similarity matrix
+    """
+
+
+def sim_to_cost(S):
+    """
+    """
+    matrix_optim = 2.0*c*np.ones((n+1, m+1)) - similarity
+    matrix_optim[-1, 0:m] -= c
+    matrix_optim[0:n, -1] -= c
+    matrix_optim[-1, -1] = 0.0
+
+
 def simplify_matrix(S):
     """
     S : similarity matrix to normalize
