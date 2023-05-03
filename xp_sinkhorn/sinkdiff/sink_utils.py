@@ -14,6 +14,21 @@ def from_cost_to_similarity(C):
     return simplify_matrix(S-C)
 
 
+def cost_to_sim_exp(C, T_param=7, T_max=10):
+    n, m = C.shape
+    ones_m = torch.ones((1, m))
+    ones_n = torch.ones((n, 1))
+    minL, _ = C.min(dim=1)
+    minL[-1] = 0.0
+    Cp = C-(minL.view(n, 1)@ones_m)
+    T = min(T_max, T_param*torch.log(torch.tensor(T_max))/torch.max(Cp))
+    minC, _ = Cp.min(dim=0)
+    minC[-1] = 0.0
+    Cp = Cp-ones_n@minC.view(1, m)
+    Cp = Cp/torch.max(Cp)
+    return torch.exp(-T*Cp)
+
+
 def cost_to_sim(C):
     """
     Transforms a cost matrix to a similarity matrix
